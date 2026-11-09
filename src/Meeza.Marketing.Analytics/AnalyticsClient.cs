@@ -6,7 +6,8 @@ using Meeza.Marketing.Shared.Utilities;
 
 namespace Meeza.Marketing.Analytics;
 
-public sealed record Ga4Property(string PropertyId, string? DisplayName, string? AccountName);
+/// <summary>A GA4 property. <paramref name="Apps"/> lists the app / web streams under it ("Gapsy (com.meeza.colorslide)"), which is what people recognise; the property display name is often a Firebase project id.</summary>
+public sealed record Ga4Property(string PropertyId, string? DisplayName, string? AccountName, IReadOnlyList<string>? Apps = null);
 
 /// <summary>One GA4 report: dimension values as strings, metric values as numbers (null when missing).</summary>
 public sealed record Ga4Report(
@@ -85,7 +86,33 @@ public sealed class AnalyticsClient
                 }
             page = doc.RootElement.Str("nextPageToken");
         } while (!string.IsNullOrEmpty(page));
+
+        // Resolve the app names under each property so the UI can show "Gapsy (com.meeza.colorslide)" instead of a Firebase project id.
+        // Best effort: a property the key cannot read streams for keeps Apps = null.
+        for (var i = 0; i < list.Count; i++)
+        {
+            try { list[i] = list[i] with { Apps = await ListStreamNamesAsync(list[i].PropertyId, ct).ConfigureAwait(false) }; }
+            catch (Exception ex) when (ex is not OperationCanceledException) { }
+        }
         return list;
+    }
+
+    /// <summary>Human-readable names of the data streams of a property: "Display name (package or bundle id)" or the web stream's default URL.</summary>
+    private async Task<IReadOnlyList<string>> ListStreamNamesAsync(string propertyId, CancellationToken ct)
+    {
+        using var doc = await SendAsync(HttpMethod.Get, $"{AdminHost}/properties/{propertyId}/dataStreams?pageSize=50", null, ct).ConfigureAwait(false);
+        var names = new List<string>();
+        foreach (var s in doc.RootElement.Arr("dataStreams"))
+        {
+            var display = s.Str("displayName");
+            var id = s.TryGetProperty("androidAppStreamData", out var a) ? a.Str("packageName")
+                   : s.TryGetProperty("iosAppStreamData", out var io) ? io.Str("bundleId")
+                   : s.TryGetProperty("webStreamData", out var w) ? w.Str("defaultUri")
+                   : null;
+            var name = string.IsNullOrEmpty(display) ? id : string.IsNullOrEmpty(id) || id == display ? display : $"{display} ({id})";
+            if (!string.IsNullOrEmpty(name)) names.Add(name);
+        }
+        return names;
     }
 
     /// <summary>Runs a Data API report. <paramref name="body"/> is a RunReportRequest written with camelCase names.</summary>

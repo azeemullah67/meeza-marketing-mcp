@@ -316,6 +316,18 @@ details.notes ul { margin: 8px 0 0; padding: 12px 16px 12px 32px; background: va
 .form label.wide, .form .wide { grid-column: 1 / -1; }
 .conn { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: var(--surface-2); }
 .conn label.opt { display: flex; gap: 8px; align-items: center; padding: 6px 0; font-size: 13px; color: var(--text); flex-direction: row; }
+details.adv { border: 1px dashed var(--border-strong); border-radius: 10px; padding: 0 14px; background: var(--surface-2); }
+details.adv > summary { cursor: pointer; display: flex; gap: 10px; align-items: center; min-height: 44px; font: 600 13.5px/20px var(--font); color: var(--text); list-style: none; }
+details.adv > summary::-webkit-details-marker { display: none; }
+details.adv > summary::before { content: "▸"; color: var(--muted); font-size: 12px; transition: transform .15s; }
+details.adv[open] > summary::before { transform: rotate(90deg); }
+details.adv > .form { padding: 4px 0 16px; }
+details.adv .adv-help { margin-top: 0; line-height: 16px; }
+details.adv .adv-help code { font-size: 12px; background: var(--surface-3); padding: 1px 5px; border-radius: 4px; }
+details.raw { margin-top: 6px; font-size: 12px; }
+details.raw > summary { cursor: pointer; text-decoration: underline; opacity: .8; }
+details.raw[open] { word-break: break-word; opacity: .85; }
+form.cred.focus { outline: 2px solid var(--s1); outline-offset: 2px; transition: outline-color .6s; }
 .funnel .step { display: grid; grid-template-columns: 200px 1fr 120px 200px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--grid); }
 .funnel .step:last-of-type { border-bottom: 0; }
 .funnel .fb { height: 24px; background: linear-gradient(90deg, var(--s1), #22d3ee); border-radius: 0 6px 6px 0; min-width: 2px; }
@@ -1035,7 +1047,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     const max = Math.max(1, ...d.steps.map(s => s.value || 0));
     view.innerHTML = head("Funnel", `<span class="rchip">${esc(rng(d.range))}</span><span>where players drop off, from ad impression to revenue</span>`)
       + (d.biggestDrop ? `<div class="banner warn">${ic("warn")}<div><b>Biggest drop:</b> only ${pct(d.biggestDrop.rate)} of players at “${esc(d.biggestDrop.from)}” reach “${esc(d.biggestDrop.to)}”. ${esc(d.biggestDrop.meaning)}</div></div>` : "")
-      + `<div class="card funnel">${d.steps.map(s => `<div class="step"><div><b>${esc(s.label)}</b><div class="sub">${esc(s.source)}</div></div>
+      + `<div class="card funnel">${d.steps.map(s => `<div class="step"><div><b>${esc(s.label)}</b><div class="sub">${esc(s.source)}</div>${s.note ? `<div class="sub muted" style="margin-top:2px">${esc(s.note)}</div>` : ""}</div>
           <div>${s.value === null ? `<div class="fb na" style="width:100%"></div>` : `<div class="fb" style="width:${Math.max(.5, Math.sqrt(s.value / max) * 100)}%"></div>`}</div>
           <div class="num" style="text-align:right"><b>${s.value === null ? "unavailable" : num(s.value)}</b></div>
           <div class="sub">${s.conversionFromPrevious !== null && s.conversionFromPrevious !== undefined ? `${pct(s.conversionFromPrevious, 1)} of ${esc(s.fromStep)}${s.previousConversion !== null && s.previousConversion !== undefined ? ` <span class="muted">(prev ${pct(s.previousConversion, 1)})</span>` : ""}` : esc(s.note || "")}</div></div>`).join("")}
@@ -1074,7 +1086,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     view.innerHTML = head("AI marketing analyst", "Automatic findings from rules over your synced data, plus a conversational analyst that reads the same data")
       + `<div class="grid g2" style="align-items:start"><div><h2 style="margin-bottom:8px">Automatic findings · ${esc(rng(f.range))}</h2><div class="grid">${f.findings.map((x, i) => findingCard(x, i < 2)).join("") || '<div class="card empty"><b>Nothing urgent</b>No rule fired for this period. See <a href="#/overview">Overview → Needs attention</a> for data gaps.</div>'}</div></div>
         <div class="card"><div class="hd"><h2>Ask the analyst</h2>${a.conversations.length ? `<select id="convSel" style="margin-left:auto"><option value="">New conversation</option>${a.conversations.map(c => `<option value="${esc(c.conversationId)}" ${c.conversationId === S.conv ? "selected" : ""}>${esc((c.title || "").slice(0, 60))}</option>`).join("")}</select>` : ""}</div>
-          ${a.configured ? "" : `<div class="banner warn">${ic("warn")}<div>The chat needs an Anthropic API key. <a href="#/integrations">Add it in Data sources → Claude</a>. Automatic findings work without it.</div></div>`}
+          ${a.configured ? "" : `<div class="banner warn">${ic("warn")}<div>The chat needs an Anthropic API key. <a href="#/integrations?focus=claude">Add it in Data sources → Claude</a>. Automatic findings work without it.</div></div>`}
           <div class="chips" style="margin-bottom:10px">${qs.map(x => `<button type="button" data-q="${esc(x)}" ${a.configured ? "" : "disabled"}>${esc(x)}</button>`).join("")}</div>
           <div class="chat" id="chat"></div>
           <form id="askForm" style="display:flex;gap:8px;margin-top:10px"><textarea id="askQ" placeholder="Ask about this project's data…" style="min-height:44px"></textarea><button class="btn primary lg" ${a.configured ? "" : "disabled"}>Ask</button></form>
@@ -1104,7 +1116,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     const p = P().project;
     const names = { competitors: "Competitor games", creatives: "Competitor ad creatives", market: "Market & genre trends", countries: "Country opportunities", aso: "Store listings & ASO", ua_opportunities: "UA opportunities", custom: "Custom question" };
     view.innerHTML = head("Market & competitor research", "Web research with citations; verified findings are kept separate from estimates")
-      + (d.configured ? "" : `<div class="banner warn">${ic("warn")}<div>Research needs an Anthropic API key (web search runs through the Claude API). <a href="#/integrations">Add it in Data sources → Claude</a>.</div></div>`)
+      + (d.configured ? "" : `<div class="banner warn">${ic("warn")}<div>Research needs an Anthropic API key (web search runs through the Claude API). <a href="#/integrations?focus=claude">Add it in Data sources → Claude</a>.</div></div>`)
       + (!p.genre && !p.androidStoreUrl && !p.iosStoreUrl ? `<div class="banner">${ic("info")}<div>Add the genre and store URLs in <a href="#/settings">Project settings</a> so research targets the right competitors.</div></div>` : "")
       + `<div class="card"><form id="rForm" class="form"><label>Topic<select id="rTopic">${d.topics.map(t => `<option value="${t}">${names[t] || t}</option>`).join("")}</select></label><label class="wide">Question or focus (optional)<textarea id="rQ" placeholder="e.g. Compare our store listing with the top 5 color-sort puzzle games"></textarea></label><div class="wide" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="btn primary" ${d.configured ? "" : "disabled"}>Start research</button><span class="sub">Takes 1–4 minutes and runs in the background.</span></div></form></div>
       <div class="grid" style="margin-top:12px" id="rList">${d.reports.map(r => `<details class="card" ${r === d.reports[0] ? "open" : ""}><summary><b>${esc(names[r.topic] || r.topic)}</b> <span class="pill ${r.status === "done" ? "fresh" : r.status === "running" ? "syncing" : "stale"}">${esc(r.status)}</span> <span class="sub">${esc(ago(r.createdAt))}</span></summary>
@@ -1171,6 +1183,10 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn primary">Save</button><button type="button" class="btn" data-test="${p.platform}">Test connection</button></div><div class="sub msgbox" style="margin-top:6px"></div></form>`).join("")}</div>`;
     const sn = $("#syncNow2"); if (sn) sn.onclick = () => startSync();
     if (sy?.running && !S.syncPoll) pollSync();
+    // "#/integrations?focus=claude" (from the AI pages and the project form) scrolls to that credentials card and highlights it.
+    const focus = new URLSearchParams(location.hash.split("?")[1] || "").get("focus");
+    const fc = focus && $(`form.cred[data-p="${CSS.escape(focus)}"]`);
+    if (fc) { fc.classList.add("focus"); fc.scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => fc.classList.remove("focus"), 2500); }
     $$("form.cred").forEach(form => {
       const box = $(".msgbox", form);
       form.onsubmit = async (e) => {
@@ -1233,6 +1249,23 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
   }
 
   // ---- project create / edit
+  const CURRENCIES = ["USD", "EUR", "GBP", "PKR", "INR", "BRL", "MXN", "PHP", "IDR", "VND", "THB", "TRY", "JPY", "KRW", "CNY", "AUD", "CAD", "SAR", "AED", "EGP", "NGN", "ZAR", "PLN", "SEK", "NOK", "DKK", "CHF", "SGD", "MYR", "BDT"];
+  const ZONES = (current) => {
+    let z = [];
+    try { z = Intl.supportedValuesOf("timeZone"); } catch { z = ["UTC", "Asia/Karachi", "Asia/Kolkata", "Asia/Manila", "Asia/Jakarta", "Europe/London", "Europe/Berlin", "America/New_York", "America/Los_Angeles", "America/Sao_Paulo"]; }
+    if (current && !z.includes(current)) z = [current, ...z];
+    return ["", ...z];
+  };
+  // Plain-language version of an account-discovery error, with the raw text one click away.
+  function connError(i) {
+    const raw = i.error || "", name = label(i.integration);
+    const expired = /expired|code 190|invalid or expired|invalid_grant|unauthenticated|401/i.test(raw);
+    const denied = /permission|403|forbidden|not authorized|access denied/i.test(raw);
+    const msg = expired ? `${name} connection has expired. <a href="#/integrations?focus=${i.integration}">Reconnect it in Data sources</a>${i.integration === "meta" ? " (use a System User token: it does not expire)" : ""}.`
+      : denied ? `${name} credentials are valid but cannot see any account. Give them read access in ${name}, then <a href="#/integrations?focus=${i.integration}">test the connection</a>.`
+      : `Could not load ${name} accounts. <a href="#/integrations?focus=${i.integration}">Check the connection in Data sources</a>.`;
+    return `<div class="banner err" style="margin:8px 0 4px;padding:8px 12px">${ic("warn")}<div>${msg}<details class="raw"><summary>Technical details</summary>${esc(raw)}</details></div></div>`;
+  }
   async function projectForm(existing) {
     view.innerHTML = head(existing ? "Project settings" : "New game project", existing ? esc(existing.name) : "Describe the game and pick the accounts its data comes from. You can change connections later.") + `<div class="loading">Discovering connected accounts…</div>`;
     const disc = await api("/api/v2/discover");
@@ -1249,19 +1282,22 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
           ${fld("iosStoreUrl", "App Store URL", p.iosStoreUrl, 'placeholder="https://apps.apple.com/…"')}
           <div class="cpick-field"><span id="tcLbl">Target countries</span><div id="tcPick"></div></div>
           <label>Monetization<select name="monetization">${["", "ads", "iap", "hybrid", "subscription", "premium"].map(m => `<option ${p.monetization === m ? "selected" : ""} value="${m}">${m || "—"}</option>`).join("")}</select></label>
-          ${fld("currency", "Reporting currency", p.currency, 'placeholder="ad account currency, e.g. PKR" maxlength=3')}
-          ${fld("timeZone", "Time zone", p.timeZone ?? (existing ? "" : tz), 'placeholder="Asia/Karachi"')}
+          <label>Reporting currency<select name="currency">${["", ...CURRENCIES, ...(p.currency && !CURRENCIES.includes(p.currency) ? [p.currency] : [])].map(c => `<option value="${c}" ${p.currency === c ? "selected" : ""}>${c || "— pick, or tick an ad account below —"}</option>`).join("")}</select><span class="sub">Filled in from the first ad account you tick.</span></label>
+          <label>Time zone<select name="timeZone">${ZONES(p.timeZone ?? (existing ? "" : tz)).map(z => `<option value="${esc(z)}" ${(p.timeZone ?? (existing ? "" : tz)) === z ? "selected" : ""}>${esc(z || "—")}</option>`).join("")}</select><span class="sub">Days are cut at midnight in this zone.</span></label>
           <label>Launch stage<select name="launchStage">${["", "prototype", "soft_launch", "global_launch", "live_ops", "scaling"].map(m => `<option ${p.launchStage === m ? "selected" : ""} value="${m}">${m.replace("_", " ") || "—"}</option>`).join("")}</select></label>
           <label class="wide">Marketing objectives<textarea name="objectives" placeholder="e.g. Reach D1 ≥ 35% before scaling; CPI ≤ PKR 25 in PH">${esc(p.objectives || "")}</textarea></label>
-          ${fld("tutorialEvent", "Tutorial completion event (GA4)", p.tutorialEvent, 'placeholder="tutorial_complete"')}
-          ${fld("purchaseEvent", "Purchase event (GA4)", p.purchaseEvent, 'placeholder="in_app_purchase"')}
-          <label>History to backfill (days)<input type="number" name="backfillDays" min="7" max="730" value="${p.backfillDays || 90}"></label>
-          <label>Sync every (minutes)<input type="number" name="syncIntervalMinutes" min="15" max="1440" value="${p.syncIntervalMinutes || 60}"></label>
+          <details class="adv wide" ${existing && (p.tutorialEvent || p.purchaseEvent || (p.backfillDays && p.backfillDays !== 90) || (p.syncIntervalMinutes && p.syncIntervalMinutes !== 60)) ? "open" : ""}><summary>Advanced <span class="sub">optional · the defaults work for most games</span></summary><div class="form">
+            <label>Tutorial completion event (GA4)<input type="text" name="tutorialEvent" value="${esc(p.tutorialEvent ?? "")}" placeholder="tutorial_complete"><span class="sub adv-help">The GA4 event your game sends when a player finishes the tutorial. Leave empty to use <code>tutorial_complete</code>.</span></label>
+            <label>Purchase event (GA4)<input type="text" name="purchaseEvent" value="${esc(p.purchaseEvent ?? "")}" placeholder="in_app_purchase"><span class="sub adv-help">The GA4 event for a real-money purchase. Leave empty to use <code>in_app_purchase</code>.</span></label>
+            <label>How much history to load (days)<input type="number" name="backfillDays" min="7" max="730" value="${p.backfillDays || 90}"><span class="sub adv-help">Fetched once when the project is created. 90 days is enough for trends; more takes longer on the first sync.</span></label>
+            <label>Refresh data every (minutes)<input type="number" name="syncIntervalMinutes" min="15" max="1440" value="${p.syncIntervalMinutes || 60}"><span class="sub adv-help">How often new numbers are pulled from the ad platforms and GA4 while the dashboard is running.</span></label>
+          </div></details>
         </div></div>
         <div class="card" style="margin-top:12px"><div class="hd"><h2>Data sources</h2><span class="sub">tick the accounts that belong to this game · <a href="#/integrations">add credentials</a></span></div><div class="grid g2">
           ${disc.integrations.map(i => `<div class="conn"><b>${label(i.integration)}</b>${i.integration === "google_play" ? ' <span class="sub">(app link)</span>' : ""}
-            ${!i.configured ? `<div class="sub">Not configured. ${esc(i.hint || "")}</div>` : i.error ? `<div class="sub" style="color:var(--critical)">${esc(i.error)}</div>` : ""}
-            ${i.items.map(it => `<label class="opt"><input type="checkbox" data-int="${i.integration}" data-id="${esc(it.id)}" data-name="${esc(it.name || "")}" data-cur="${esc(it.currency || "")}" data-tz="${esc(it.timeZone || "")}" ${linked.has(i.integration + "|" + it.id) ? "checked" : ""}> ${esc(it.name || it.id)} <span class="sub">${esc(it.id)}${it.currency ? " · " + esc(it.currency) : ""}${it.timeZone ? " · " + esc(it.timeZone) : ""}</span></label>`).join("")}
+            ${!i.configured ? `<div class="sub">Not connected yet. <a href="#/integrations?focus=${i.integration}">Connect ${esc(label(i.integration))}</a>.</div>` : i.error ? connError(i) : i.items.length ? "" : `<div class="sub">Connected, but no accounts are visible to these credentials.</div>`}
+            ${i.items.map(it => { const apps = Array.isArray(it.apps) && it.apps.length ? it.apps : null; const main = apps ? apps.join(", ") : (it.name || it.id); const sub = [apps && it.name ? it.name : null, it.id, it.currency, it.timeZone].filter(Boolean).join(" · ");
+              return `<label class="opt"><input type="checkbox" data-int="${i.integration}" data-id="${esc(it.id)}" data-name="${esc(apps ? apps[0] : (it.name || ""))}" data-cur="${esc(it.currency || "")}" data-tz="${esc(it.timeZone || "")}" ${linked.has(i.integration + "|" + it.id) ? "checked" : ""}> ${esc(main)} <span class="sub">${esc(sub)}</span></label>`; }).join("")}
             ${(p.connections || []).filter(c => c.integration === i.integration && !i.items.some(it => it.id === c.externalId)).map(c => `<label class="opt"><input type="checkbox" data-int="${c.integration}" data-id="${esc(c.externalId)}" data-name="${esc(c.displayName || "")}" checked> ${esc(c.displayName || c.externalId)} <span class="sub">(linked; not visible with current credentials)</span></label>`).join("")}
           </div>`).join("")}
         </div></div>
@@ -1270,6 +1306,12 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     const f = $("#pForm");
     f.platforms.value = p.platforms || "android";
     countryPicker($("#tcPick"), "targetCountries", p.targetCountries, "tcLbl");
+    // Ticking an ad account fills in currency / time zone when they are still empty, so nobody has to know their account's settings.
+    f.onchange = (e) => {
+      const c = e.target.closest("input[data-int]"); if (!c || !c.checked) return;
+      if (c.dataset.cur && !f.currency.value) { if (![...f.currency.options].some(o => o.value === c.dataset.cur)) f.currency.add(new Option(c.dataset.cur, c.dataset.cur)); f.currency.value = c.dataset.cur; }
+      if (c.dataset.tz && !f.timeZone.value) { if (![...f.timeZone.options].some(o => o.value === c.dataset.tz)) f.timeZone.add(new Option(c.dataset.tz, c.dataset.tz)); f.timeZone.value = c.dataset.tz; }
+    };
     f.onsubmit = async (e) => {
       e.preventDefault();
       const body = Object.fromEntries(["name", "genre", "platforms", "androidStoreUrl", "iosStoreUrl", "targetCountries", "monetization", "currency", "timeZone", "launchStage", "objectives", "tutorialEvent", "purchaseEvent"].map(k => [k, f[k].value.trim() || null]));

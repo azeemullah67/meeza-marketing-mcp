@@ -195,7 +195,7 @@ public static class PlatformApi
             Try(Integrations.Meta, meta.IsConfigured, meta.ConfigurationHint, async () => (await meta.GetAccountsAsync(ct))
                 .Select(a => (object)new { id = a.AccountId, name = a.Name, currency = a.Currency, timeZone = a.TimeZone })),
             Try(Integrations.Ga4, ga4.IsConfigured, AnalyticsOptions.Hint, async () => (await ga4.GetPropertiesAsync(ct))
-                .Select(x => (object)new { id = x.PropertyId, name = x.DisplayName, account = x.AccountName })),
+                .Select(x => (object)new { id = x.PropertyId, name = x.DisplayName, account = x.AccountName, apps = x.Apps })),
             Try(Integrations.GooglePlay, play.IsConfigured, PlayConsoleOptions.Hint, async () => (await play.GetAppsAsync(ct))
                 .Select(a => (object)new { id = a.PackageName, name = a.DisplayName })),
         };
