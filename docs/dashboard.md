@@ -68,7 +68,8 @@ Totals are always for a single currency. If your accounts use several currencies
 
 - The dashboard listens on **127.0.0.1 only**, so it can't be reached from your network.
 - Every request needs a private access key. The key is in the link that Claude or the CLI gives you. After the first visit it's stored as an `HttpOnly`, `SameSite=Strict` cookie, and the URL is cleaned.
-- The key is kept in `%APPDATA%\MeezaMarketingMcp\dashboard.key` (on macOS/Linux, `~/.config/MeezaMarketingMcp/dashboard.key`). Delete that file to revoke every existing link.
+- The key is kept in `%APPDATA%\MeezaMarketingMcp\dashboard.key` (on macOS/Linux, `~/.config/MeezaMarketingMcp/dashboard.key`), readable by your user only. Run `meeza-marketing-mcp dashboard rotate-key` (or delete that file) to revoke every existing link and browser session; running instances notice on their next request, no restart needed.
+- When the dashboard port is already taken, the CLI and the `open_dashboard` tool first check that the listener really is your Meeza dashboard (a challenge only the running instance can answer). Another program on that port gets no link; the message tells you to set `MEEZA_DASHBOARD_PORT`. See [security.md](security.md).
 - Requests with a foreign `Host` header are rejected, which blocks DNS-rebinding attacks.
 - Only `GET` requests are accepted. A strict Content-Security-Policy blocks external scripts, and the page loads no third-party code.
 - Ad names and review text are HTML-escaped before display. CSV export neutralises spreadsheet formulas.

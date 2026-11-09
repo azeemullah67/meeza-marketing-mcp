@@ -512,6 +512,8 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
   // ------------------------------------------------------------------ state & utils
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  // Only http(s) links/images from providers, AI citations and research are rendered; anything else becomes a dead link.
+  const safeUrl = (u) => typeof u === "string" && /^https?:\/\/[^\s"'<>]+$/i.test(u) ? u : null;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const store = { get(k, d) { try { const v = localStorage.getItem("mg." + k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem("mg." + k, JSON.stringify(v)); } catch { } } };
   const S = {
@@ -690,7 +692,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
   const stLabel = { good: "OK", watch: "Watch", bad: "Problem", info: "Info", unknown: "Low data" };
   function citeFn(st) {
     const srcName = Object.fromEntries((st.sources || []).map(x => [x.id, x]));
-    return (ids) => (ids || "").split(",").map(x => x.trim()).filter(Boolean).map(id => srcName[id] ? `<a href="${esc(srcName[id].url || "#")}" target="_blank" rel="noopener">${esc(srcName[id].name)}</a>` : esc(id)).join(", ");
+    return (ids) => (ids || "").split(",").map(x => x.trim()).filter(Boolean).map(id => srcName[id] ? `<a href="${esc(safeUrl(srcName[id].url) || "#")}" target="_blank" rel="noopener">${esc(srcName[id].name)}</a>` : esc(id)).join(", ");
   }
   function verdictCard(st) {
     const attn = st.health.filter(h => h.status === "bad" || h.status === "watch").length + st.problems.length;
@@ -1024,9 +1026,9 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     const cur = d.currency;
     const cls = { best: "Best", underperforming: "Underperforming", fatigued: "Fatigued", testing: "Testing", steady: "Steady", no_install_data: "No install data" };
     const visual = d.creatives.filter(c => c.format !== "text"), copy = d.creatives.filter(c => c.format === "text");
-    const card = (c) => `<div class="cr"><div class="thumb">${c.thumbnailUrl ? `<img src="${esc(c.thumbnailUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : esc(c.format)}</div><div>
+    const card = (c) => `<div class="cr"><div class="thumb">${safeUrl(c.thumbnailUrl) ? `<img src="${esc(c.thumbnailUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : esc(c.format)}</div><div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><b>${esc(c.name)}</b><span class="pill ${c.classification === "best" ? "fresh" : c.classification === "underperforming" || c.classification === "fatigued" ? "stale" : ""}">${cls[c.classification] || c.classification}</span>${c.score !== null ? `<span class="pill" title="${esc(d.rules.score)}">score ${c.score}</span>` : ""}<span class="pill">${esc(c.format)}${c.durationSeconds ? ` · ${Math.round(c.durationSeconds)}s` : ""}</span>${c.platformLabel ? `<span class="pill" title="Google's own asset rating">Google: ${esc(c.platformLabel.toLowerCase())}</span>` : ""}</div>
-        <div class="sub">${label(c.platform)} · ${esc(c.campaignName || c.campaignId || "")} · ID ${esc(c.creativeId)}${c.previewUrl ? ` · <a href="${esc(c.previewUrl)}" target="_blank" rel="noopener noreferrer">preview ↗</a>` : ""} · theme: ${esc(c.theme)} · hook: “${esc(c.hook)}”</div>
+        <div class="sub">${label(c.platform)} · ${esc(c.campaignName || c.campaignId || "")} · ID ${esc(c.creativeId)}${safeUrl(c.previewUrl) ? ` · <a href="${esc(c.previewUrl)}" target="_blank" rel="noopener noreferrer">preview ↗</a>` : ""} · theme: ${esc(c.theme)} · hook: “${esc(c.hook)}”</div>
         <div class="m"><div>Spend<b>${money(c.metrics.spend, cur)}</b></div><div>Impr.<b>${num(c.metrics.impressions)}</b></div><div>CTR<b>${pct(c.metrics.ctr, 2)}</b></div><div>CPC<b>${money(c.metrics.cpc, "")}</b></div><div>CPM<b>${money(c.metrics.cpm, "")}</b></div><div>Installs<b>${num(c.metrics.installs)}</b></div><div>CPI<b>${money(c.metrics.cpi, "")}</b></div><div>IPM<b>${num(c.metrics.ipm, 2)}</b></div><div>Frequency<b>${c.frequency ?? "—"}</b></div><div>D1 / D7<b title="${esc(c.retentionNote)}">n/a</b></div><div>ROAS<b>${pct(c.metrics.platformRoas, 0)}</b></div><div>Confidence<b>${esc(c.confidence)}</b></div></div>
         ${c.history.length > 1 ? `<div class="sub" style="margin-top:4px">Daily impressions</div>${spark(c.history.map(h => ({ value: h.impressions })))}` : ""}
         ${c.reasons.length ? `<div class="sub">${c.reasons.map(esc).join(" ")}</div>` : ""}</div></div>`;
@@ -1122,7 +1124,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
       <div class="grid" style="margin-top:12px" id="rList">${d.reports.map(r => `<details class="card" ${r === d.reports[0] ? "open" : ""}><summary><b>${esc(names[r.topic] || r.topic)}</b> <span class="pill ${r.status === "done" ? "fresh" : r.status === "running" ? "syncing" : "stale"}">${esc(r.status)}</span> <span class="sub">${esc(ago(r.createdAt))}</span></summary>
         <div class="sub" style="margin:6px 0">${esc(r.question.slice(0, 400))}</div>
         ${r.status === "running" ? '<div class="loading">Researching… this page refreshes automatically.</div>' : r.error ? `<div class="banner err">${ic("warn")}<div>${esc(r.error)}</div></div>` : `<div class="md">${md(r.content)}</div>`}
-        ${r.citations.length ? `<h3 style="font-size:13px">Sources</h3><ol class="sub">${r.citations.map(c => `<li id="cite-${c.index}"><a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.title || c.url)}</a>${c.citedText ? ` — “${esc(c.citedText.slice(0, 200))}”` : ""}</li>`).join("")}</ol>` : ""}</details>`).join("") || '<div class="card empty"><b>No research yet</b>Pick a topic above.</div>'}</div>`;
+        ${r.citations.length ? `<h3 style="font-size:13px">Sources</h3><ol class="sub">${r.citations.map(c => `<li id="cite-${c.index}"><a href="${esc(safeUrl(c.url) || "#")}" target="_blank" rel="noopener noreferrer">${esc(c.title || c.url)}</a>${c.citedText ? ` — “${esc(c.citedText.slice(0, 200))}”` : ""}</li>`).join("")}</ol>` : ""}</details>`).join("") || '<div class="card empty"><b>No research yet</b>Pick a topic above.</div>'}</div>`;
     $("#rForm").onsubmit = async (e) => { e.preventDefault(); try { await post(`/api/v2/projects/${encodeURIComponent(S.project)}/research`, { topic: $("#rTopic").value, question: $("#rQ").value }); toast("Research started."); V.research(); } catch (err) { toast(err.message, 8000); } };
     clearTimeout(V.research.t);
     if (d.reports.some(r => r.status === "running")) V.research.t = setTimeout(() => { if (S.route === "research") V.research().catch(fail); }, 15000);
@@ -1160,7 +1162,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     walk(b, "");
     const src = b.sources || b.Sources || [];
     el.innerHTML = rows.length ? `<table class="t"><thead><tr><th>Benchmark</th><th>Value</th><th>Source / period</th></tr></thead><tbody>${rows.slice(0, 300).map(r => `<tr><td><b>${esc(r.label || r.metric || r.path)}</b>${r.segment ? `<div class="sub">${esc(r.segment)}</div>` : ""}</td><td class="num">${esc(r.value ?? [r.low, r.median, r.high].filter(x => x !== undefined).join(" / "))}${r.unit ? " " + esc(r.unit) : ""}</td><td class="sub">${esc(r.source || r.sourceId || "")}${r.period ? " · " + esc(r.period) : ""}</td></tr>`).join("")}</tbody></table>` : `<pre class="sub" style="white-space:pre-wrap">${esc(JSON.stringify(b, null, 1).slice(0, 6000))}</pre>`;
-    if (src.length) el.insertAdjacentHTML("beforeend", `<h3 style="font-size:13px">Sources</h3><ul class="sub">${src.map(s => `<li>${esc(s.name || s.id || "")} ${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">↗</a>` : ""} ${esc(s.date || s.published || "")} ${esc(s.methodology || "")}</li>`).join("")}</ul>`);
+    if (src.length) el.insertAdjacentHTML("beforeend", `<h3 style="font-size:13px">Sources</h3><ul class="sub">${src.map(s => `<li>${esc(s.name || s.id || "")} ${safeUrl(s.url) ? `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">↗</a>` : ""} ${esc(s.date || s.published || "")} ${esc(s.methodology || "")}</li>`).join("")}</ul>`);
   }
 
   V.integrations = async () => {

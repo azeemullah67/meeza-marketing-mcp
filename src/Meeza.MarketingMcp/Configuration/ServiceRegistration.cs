@@ -77,6 +77,9 @@ public static class ServiceRegistration
             {
                 PooledConnectionLifetime = TimeSpan.FromMinutes(5),
                 AutomaticDecompression = DecompressionMethods.All,
+                // Credentials are attached per request after the destination is validated; a redirect would send them
+                // wherever the server says. The APIs we call never redirect in normal operation.
+                AllowAutoRedirect = false,
             },
         };
         var client = new HttpClient(retry) { Timeout = TimeSpan.FromSeconds(120) };

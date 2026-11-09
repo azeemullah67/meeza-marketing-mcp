@@ -17,8 +17,13 @@ public sealed class DashboardTools(DashboardServer server, PlatformRegistry regi
         CancellationToken ct = default) =>
         ToolRunner.RunAsync("open_dashboard", async r =>
         {
-            var running = server.IsRunning || DashboardServer.PortInUse() || await server.StartAsync(ct);
-            if (!running) throw new InvalidOperationException($"The dashboard could not start on port {DashboardServer.Port}. Set MEEZA_DASHBOARD_PORT to a free port.");
+            // An occupied port is not proof of a dashboard: only a listener that answers the identity challenge is trusted
+            // with a link that carries the access key.
+            var running = server.IsRunning || await DashboardServer.IsOurInstanceAsync(ct) || await server.StartAsync(ct);
+            if (!running)
+                throw new InvalidOperationException(DashboardServer.PortInUse()
+                    ? DashboardServer.PortBusyMessage
+                    : $"The dashboard could not start on port {DashboardServer.Port}. Set MEEZA_DASHBOARD_PORT to a free port.");
             var opened = openBrowser && DashboardServer.TryOpenBrowser(DashboardServer.Url);
             r.Data = new { url = DashboardServer.Url, openedInBrowser = opened };
             r.Notes.Add("The link contains a private access key for this computer. Don't share it. The dashboard only listens on 127.0.0.1.");

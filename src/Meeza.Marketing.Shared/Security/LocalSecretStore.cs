@@ -72,10 +72,12 @@ public sealed class LocalSecretStore
 
     private void Save(Dictionary<string, string> all)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+        PrivateStorage.EnsurePrivateDirectory(Path.GetDirectoryName(_path)!);
         var tmp = _path + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(all, new JsonSerializerOptions { WriteIndented = true }));
+        PrivateStorage.MakeFilePrivate(tmp);
         File.Move(tmp, _path, overwrite: true);
+        PrivateStorage.MakeFilePrivate(_path);
     }
 
     private static void EnsureSupported()

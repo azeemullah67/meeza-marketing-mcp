@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly dependency-advisory run even when nothing changed.
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build, test, audit dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      # --locked-mode fails when any packages.lock.json would change: no silent dependency drift.
+      - name: Restore (locked)
+        run: dotnet restore --locked-mode
+
+      - name: Build
+        run: dotnet build --no-restore -c Release -warnaserror
+
+      - name: Test
+        run: dotnet test --no-build -c Release --logger "trx;LogFileName=results.trx"
+
+      - name: Dependency vulnerability audit
+        run: |
+          dotnet list package --vulnerable --include-transitive > vulns.txt
+          cat vulns.txt
+          if grep -q "has the following vulnerable packages" vulns.txt; then
+            echo "::error::Vulnerable NuGet packages found"; exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: "**/results.trx"
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

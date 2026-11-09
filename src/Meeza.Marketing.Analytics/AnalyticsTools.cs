@@ -25,7 +25,7 @@ public sealed class AnalyticsTools(AnalyticsService service)
         ToolRunner.RunAsync("ga4_get_properties", async r =>
         {
             var props = await service.GetPropertiesAsync(ct);
-            r.Data = new { serviceAccount = service.SafeEmail(), usesPlayKey = service.Client.Options.UsesPlayKey, properties = props };
+            r.Data = new { serviceAccount = service.SafeEmail(), usesPlayKey = service.UsesPlayKey, properties = props };
             if (props.Count == 0)
                 r.Notes.Add("No properties are visible. Add the service account email as a Viewer in GA4 → Admin → Property access management.");
         });

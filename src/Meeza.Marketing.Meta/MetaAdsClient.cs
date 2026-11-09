@@ -50,23 +50,46 @@ public sealed class MetaAdsClient(HttpClient http, MetaAdsOptions initialOptions
         return GetPagedAsync($"{accountId}/campaigns", q, limit, ct);
     }
 
-    public Task<IReadOnlyList<JsonElement>> GetAdSetsAsync(string accountId, string? campaignId, int limit, CancellationToken ct)
+    public async Task<IReadOnlyList<JsonElement>> GetAdSetsAsync(string accountId, string? campaignId, int limit, CancellationToken ct)
     {
-        var parent = string.IsNullOrWhiteSpace(campaignId) ? accountId : ValidateId(campaignId);
-        return GetPagedAsync($"{parent}/adsets", new()
+        var parent = string.IsNullOrWhiteSpace(campaignId)
+            ? MetaAdsOptions.NormalizeAccountId(accountId)
+            : await VerifyOwnershipAsync(accountId, campaignId, "campaign", ct).ConfigureAwait(false);
+        return await GetPagedAsync($"{parent}/adsets", new()
         {
             ["fields"] = "id,name,status,effective_status,campaign_id,optimization_goal,billing_event,bid_strategy," +
                          "daily_budget,lifetime_budget,start_time,end_time,promoted_object",
-        }, limit, ct);
+        }, limit, ct).ConfigureAwait(false);
     }
 
-    public Task<IReadOnlyList<JsonElement>> GetAdsAsync(string accountId, string? adSetId, int limit, CancellationToken ct)
+    public async Task<IReadOnlyList<JsonElement>> GetAdsAsync(string accountId, string? adSetId, int limit, CancellationToken ct)
     {
-        var parent = string.IsNullOrWhiteSpace(adSetId) ? accountId : ValidateId(adSetId);
-        return GetPagedAsync($"{parent}/ads", new()
+        var parent = string.IsNullOrWhiteSpace(adSetId)
+            ? MetaAdsOptions.NormalizeAccountId(accountId)
+            : await VerifyOwnershipAsync(accountId, adSetId, "ad set", ct).ConfigureAwait(false);
+        return await GetPagedAsync($"{parent}/ads", new()
         {
             ["fields"] = "id,name,status,effective_status,campaign_id,adset_id,creative{id,name,title,object_type},created_time",
-        }, limit, ct);
+        }, limit, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// A campaign / ad set / ad ID replaces the account as the request parent, so the caller's account allow-list
+    /// would otherwise be bypassed by naming a child object from another account the token can read. This fetches the
+    /// child's <c>account_id</c> and fails closed unless it belongs to <paramref name="accountId"/>.
+    /// </summary>
+    /// <returns>The validated child ID, ready to be used as a request parent.</returns>
+    public async Task<string> VerifyOwnershipAsync(string accountId, string childId, string kind, CancellationToken ct)
+    {
+        var account = MetaAdsOptions.NormalizeAccountId(accountId);
+        var child = ValidateId(childId);
+        var obj = await GetObjectAsync(child, new() { ["fields"] = "id,account_id" }, ct).ConfigureAwait(false);
+        var owner = obj.Str("account_id");
+        if (string.IsNullOrEmpty(owner))
+            throw new AccountAccessDeniedException(MetaAdsOptions.Platform, account, $"the {kind} {child} did not report which ad account owns it, so it cannot be checked.");
+        if (!string.Equals(MetaAdsOptions.NormalizeAccountId(owner), account, StringComparison.OrdinalIgnoreCase))
+            throw new AccountAccessDeniedException(MetaAdsOptions.Platform, account, $"the {kind} {child} belongs to a different ad account.");
+        return child;
     }
 
     /// <summary>
@@ -119,11 +142,34 @@ public sealed class MetaAdsClient(HttpClient http, MetaAdsOptions initialOptions
             if (results.Count >= maxItems || pages++ >= 400) return (results, false);
             using var doc = await SendAsync(url, ct).ConfigureAwait(false);
             foreach (var item in doc.RootElement.Arr("data")) results.Add(item.Clone());
-            url = doc.RootElement.Str("paging.next");
-            if (url is not null && !url.StartsWith(GraphHost, StringComparison.OrdinalIgnoreCase)) url = null;
+            url = NextPage(doc.RootElement);
         }
         return (results, true);
     }
+
+    /// <summary>
+    /// The next page URL, or null when there is none. A link that does not point at the Graph API host over HTTPS is an
+    /// error, not "no more pages": the bearer token would otherwise be sent wherever the link points.
+    /// </summary>
+    private static string? NextPage(JsonElement root)
+    {
+        var next = root.Str("paging.next");
+        if (next is null) return null;
+        if (!IsGraphUrl(next))
+            throw new PlatformApiException(MetaAdsOptions.Platform, "The API returned a pagination link to an unexpected host; the request was stopped to protect the access token.");
+        return next;
+    }
+
+    /// <summary>
+    /// True only for an absolute https URL on exactly graph.facebook.com (default port, no user info). Deceptive forms such
+    /// as graph.facebook.com.attacker.example or graph.facebook.com@attacker.example are rejected.
+    /// </summary>
+    public static bool IsGraphUrl(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var u)
+        && u.Scheme == Uri.UriSchemeHttps
+        && string.Equals(u.Host, "graph.facebook.com", StringComparison.OrdinalIgnoreCase)
+        && (u.IsDefaultPort || u.Port == 443)
+        && string.IsNullOrEmpty(u.UserInfo);
 
     /// <summary>Ads with their creative details (thumbnail, image, video, copy) for the creative library.</summary>
     public Task<IReadOnlyList<JsonElement>> GetAdCreativesAsync(string accountId, int limit, CancellationToken ct) =>
@@ -157,8 +203,7 @@ public sealed class MetaAdsClient(HttpClient http, MetaAdsOptions initialOptions
                 results.Add(item.Clone());
                 if (results.Count >= maxItems) break;
             }
-            url = doc.RootElement.Str("paging.next");
-            if (url is not null && !url.StartsWith(GraphHost, StringComparison.OrdinalIgnoreCase)) url = null; // never follow off-host links
+            url = NextPage(doc.RootElement);
         }
         return results;
     }
@@ -180,6 +225,10 @@ public sealed class MetaAdsClient(HttpClient http, MetaAdsOptions initialOptions
     private async Task<JsonDocument> SendAsync(string url, CancellationToken ct)
     {
         if (!_options.IsConfigured) throw new PlatformNotConfiguredException(MetaAdsOptions.Platform, MetaAdsOptions.Hint);
+
+        // Last line of defence, checked immediately before the credential is attached.
+        if (!IsGraphUrl(url))
+            throw new PlatformApiException(MetaAdsOptions.Platform, "Refusing to send the access token to a non-Graph URL.");
 
         for (var attempt = 0; ; attempt++)
         {

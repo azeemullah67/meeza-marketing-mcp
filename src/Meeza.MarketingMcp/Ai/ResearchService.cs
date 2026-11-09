@@ -20,7 +20,10 @@ public sealed record ResearchReport(long Id, string ProjectId, string Topic, str
 public sealed class ResearchService(ClaudeGateway claude, ProjectStore projects, MarketingDb db, ILogger<ResearchService> logger)
 {
     private const int MaxContinuations = 6;
+    /// <summary>Global cap on simultaneous research jobs: each one is a long web-search conversation that costs real money.</summary>
+    public const int MaxConcurrent = 2;
     private readonly ConcurrentDictionary<long, Task> _running = new();
+    private readonly ConcurrentDictionary<long, CancellationTokenSource> _cancels = new();
 
     public static readonly IReadOnlyDictionary<string, string> Topics = new Dictionary<string, string>
     {
@@ -61,6 +64,12 @@ public sealed class ResearchService(ClaudeGateway claude, ProjectStore projects,
         if (question.Length > 2000) throw new ArgumentException("Keep the question under 2,000 characters.");
         var full = string.IsNullOrEmpty(question) ? brief : string.IsNullOrEmpty(brief) ? question : $"{brief}\n\nSpecific question: {question}";
 
+        // Spend guards: the UI disables its button, but the API is the boundary that counts.
+        if (_running.Count >= MaxConcurrent)
+            throw new InvalidOperationException($"{MaxConcurrent} research jobs are already running. Wait for one to finish or cancel it first.");
+        if (List(p.Id).Any(r => r.Status == "running"))
+            throw new InvalidOperationException("A research job is already running for this project. Wait for it to finish or cancel it first.");
+
         long id;
         using (var c = db.Open())
         {
@@ -68,17 +77,39 @@ public sealed class ResearchService(ClaudeGateway claude, ProjectStore projects,
                 new { projectId, topic, q = full, now = Db.Now() });
             id = c.Scalar<long>("SELECT last_insert_rowid()");
         }
+        var cts = new CancellationTokenSource(TimeSpan.FromMinutes(20)); // hard ceiling per job
+        _cancels[id] = cts;
         _running[id] = Task.Run(async () =>
         {
-            try { await RunAsync(id, p, full, CancellationToken.None).ConfigureAwait(false); }
+            try { await RunAsync(id, p, full, cts.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException)
+            {
+                Finish(id, "cancelled", null, [], cts.IsCancellationRequested ? "Cancelled." : "Timed out.");
+            }
             catch (Exception ex)
             {
-                logger.LogWarning("Research {Id} failed: {Error}", id, ex.Message);
-                Finish(id, "failed", null, [], Redactor.Redact(ex.Message));
+                // Provider exceptions can echo request details; never log them raw.
+                var safe = Redactor.Redact(ex.Message);
+                logger.LogWarning("Research {Id} failed: {Error}", id, safe);
+                Finish(id, "failed", null, [], safe);
             }
-            finally { _running.TryRemove(id, out _); }
+            finally
+            {
+                _running.TryRemove(id, out _);
+                _cancels.TryRemove(id, out _);
+                cts.Dispose();
+            }
         });
         return Get(projectId, id)!;
+    }
+
+    /// <summary>Stops a running job of this project. Returns false when it is not running (already finished, or unknown).</summary>
+    public bool Cancel(string projectId, long id)
+    {
+        if (Get(projectId, id) is null) return false;
+        if (!_cancels.TryGetValue(id, out var cts)) return false;
+        try { cts.Cancel(); } catch (ObjectDisposedException) { return false; }
+        return true;
     }
 
     private async Task RunAsync(long id, Project p, string question, CancellationToken ct)

@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Meeza.Marketing.Shared.Models;
+using Meeza.Marketing.Shared.Security;
 using Meeza.Marketing.Shared.Utilities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -91,9 +92,17 @@ public sealed class DashboardServer(DashboardData data, Services.ConnectionSetti
             return false;
         }
         _app = app;
+        InstanceIdentity.Register(Port);
         logger.LogInformation("Live dashboard: http://127.0.0.1:{Port}/ (open it with the open_dashboard tool or `meeza-marketing-mcp dashboard`).", Port);
         return true;
     }
+
+    /// <summary>True when the listener on the dashboard port proves it is this user's Meeza dashboard (not merely "something listens").</summary>
+    public static Task<bool> IsOurInstanceAsync(CancellationToken ct) => InstanceIdentity.IsOurInstanceAsync(Port, ct);
+
+    public static string PortBusyMessage =>
+        $"Port {Port} is in use by a program that is not this user's Meeza dashboard, so no dashboard link was issued. " +
+        "Close that program or set MEEZA_DASHBOARD_PORT to a free port.";
 
     public async Task WaitForShutdownAsync(CancellationToken ct)
     {
@@ -103,6 +112,7 @@ public sealed class DashboardServer(DashboardData data, Services.ConnectionSetti
     public async ValueTask DisposeAsync()
     {
         if (_app is null) return;
+        InstanceIdentity.Unregister();
         await _app.StopAsync().ConfigureAwait(false);
         await _app.DisposeAsync().ConfigureAwait(false);
         _app = null;
@@ -132,6 +142,21 @@ public sealed class DashboardServer(DashboardData data, Services.ConnectionSetti
         if (host is not ("127.0.0.1" or "localhost"))
         {
             ctx.Response.StatusCode = StatusCodes.Status421MisdirectedRequest;
+            return;
+        }
+        // Identity challenge for other Meeza processes (see InstanceIdentity). Unauthenticated by design: the answer is an
+        // HMAC over the caller's nonce and reveals neither the instance token nor the access key.
+        if (HttpMethods.IsGet(ctx.Request.Method) && ctx.Request.Path == InstanceIdentity.RoutePath)
+        {
+            var nonce = ctx.Request.Query["nonce"].ToString();
+            var proof = nonce.Length is > 0 and <= 64 && nonce.All(Uri.IsHexDigit) ? InstanceIdentity.Answer(nonce) : null;
+            ctx.Response.Headers["Cache-Control"] = "no-store";
+            if (proof is null)
+            {
+                ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
+                return;
+            }
+            await ctx.Response.WriteAsJsonAsync(new { port = Port, proof });
             return;
         }
         // Ad data is read-only. The only writes are local configuration (connection settings, projects, targets) and
@@ -312,40 +337,156 @@ public sealed class DashboardServer(DashboardData data, Services.ConnectionSetti
 
 /// <summary>
 /// Per-user dashboard access key, persisted in the user's profile so bookmarked links keep working.
-/// Delete the file to revoke every existing link.
+/// The file is re-checked on every use, so deleting it (or running <c>dashboard rotate-key</c>) revokes every existing
+/// link and browser session immediately, in every running instance.
 /// </summary>
 public static class AccessKey
 {
-    public static string FilePath =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MeezaMarketingMcp", "dashboard.key");
+    public static string FilePath => Path.Combine(PrivateStorage.DefaultDirectory, "dashboard.key");
 
-    private static readonly Lazy<string> Key = new(LoadOrCreate);
+    private static readonly object Sync = new();
+    private static string? _key;
+    private static DateTime? _stamp; // last-write time of the file the cached key came from; null = session-only key
 
-    public static string Value => Key.Value;
+    public static string Value
+    {
+        get { lock (Sync) return Current(); }
+    }
 
     public static bool Matches(string? candidate) =>
         candidate is not null &&
         CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(candidate), Encoding.UTF8.GetBytes(Value));
 
-    private static string LoadOrCreate()
+    /// <summary>Replaces the key. Every old link and cookie fails on its next request, in this and every other running instance.</summary>
+    public static string Rotate()
+    {
+        lock (Sync)
+        {
+            try { File.Delete(FilePath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            _key = null;
+            _stamp = null;
+            return Current();
+        }
+    }
+
+    private static string Current()
     {
         try
         {
             if (File.Exists(FilePath))
             {
+                var stamp = File.GetLastWriteTimeUtc(FilePath);
+                if (_key is not null && _stamp == stamp) return _key;
                 var existing = File.ReadAllText(FilePath).Trim();
-                if (existing.Length >= 32) return existing;
+                if (existing.Length >= 32)
+                {
+                    _key = existing;
+                    _stamp = stamp;
+                    return existing;
+                }
             }
-            var key = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(24));
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+            else if (_key is not null && _stamp is null)
+            {
+                return _key; // profile not writable: session-only key
+            }
+
+            // No usable file (first run, or the user deleted it to revoke access): create a fresh key.
+            var key = NewKey();
+            PrivateStorage.EnsurePrivateDirectory(Path.GetDirectoryName(FilePath)!);
             File.WriteAllText(FilePath, key);
-            if (!OperatingSystem.IsWindows())
-                File.SetUnixFileMode(FilePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            PrivateStorage.MakeFilePrivate(FilePath);
+            _key = key;
+            _stamp = File.GetLastWriteTimeUtc(FilePath);
             return key;
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(24)); // session-only key
+            _key ??= NewKey(); // session-only key
+            _stamp = null;
+            return _key;
         }
     }
+
+    private static string NewKey() => Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(24));
+}
+
+/// <summary>
+/// Proves that whatever listens on the dashboard port is this user's Meeza dashboard before a link carrying the access
+/// key is handed out. The running instance writes a random token to a user-private file; a client challenges the
+/// listener with a nonce and expects HMAC(token, nonce). A foreign process squatting on the port cannot answer.
+/// </summary>
+public static class InstanceIdentity
+{
+    public const string RoutePath = "/__meeza/instance";
+    public static string FilePath => Path.Combine(PrivateStorage.DefaultDirectory, "dashboard.instance");
+
+    private static string? _token;
+
+    public static void Register(int port)
+    {
+        _token = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
+        try
+        {
+            PrivateStorage.EnsurePrivateDirectory(Path.GetDirectoryName(FilePath)!);
+            File.WriteAllText(FilePath, JsonSerializer.Serialize(new { pid = Environment.ProcessId, port, token = _token, startedAt = DateTimeOffset.UtcNow }));
+            PrivateStorage.MakeFilePrivate(FilePath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Without the file other processes cannot verify us and will refuse to reuse this instance; that is the safe failure.
+        }
+    }
+
+    public static void Unregister()
+    {
+        try
+        {
+            if (_token is not null && File.Exists(FilePath) && File.ReadAllText(FilePath).Contains(_token, StringComparison.Ordinal))
+                File.Delete(FilePath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        _token = null;
+    }
+
+    /// <summary>The server's answer to a challenge, or null when this process is not a registered dashboard.</summary>
+    public static string? Answer(string nonce) => _token is null ? null : Proof(_token, nonce);
+
+    public static Task<bool> IsOurInstanceAsync(int port, CancellationToken ct) => IsOurInstanceAsync(port, FilePath, ct);
+
+    /// <summary>True only when the listener on <paramref name="port"/> proves knowledge of the token in <paramref name="filePath"/>.</summary>
+    public static async Task<bool> IsOurInstanceAsync(int port, string filePath, CancellationToken ct)
+    {
+        string token;
+        try
+        {
+            if (!File.Exists(filePath)) return false;
+            using var doc = JsonDocument.Parse(File.ReadAllText(filePath));
+            if (!doc.RootElement.TryGetProperty("port", out var p) || p.GetInt32() != port) return false;
+            token = doc.RootElement.TryGetProperty("token", out var t) ? t.GetString() ?? "" : "";
+            if (token.Length < 32) return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
+        {
+            return false;
+        }
+
+        var nonce = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16));
+        try
+        {
+            using var http = new HttpClient(new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(2) };
+            using var resp = await http.GetAsync($"http://127.0.0.1:{port}{RoutePath}?nonce={nonce}", ct).ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode) return false;
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+            var answer = doc.RootElement.TryGetProperty("proof", out var a) ? a.GetString() : null;
+            return answer is not null &&
+                   CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(answer), Encoding.UTF8.GetBytes(Proof(token, nonce)));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or IOException)
+        {
+            return false;
+        }
+    }
+
+    public static string Proof(string token, string nonce) =>
+        Convert.ToHexStringLower(HMACSHA256.HashData(Encoding.UTF8.GetBytes(token), Encoding.UTF8.GetBytes(nonce)));
 }

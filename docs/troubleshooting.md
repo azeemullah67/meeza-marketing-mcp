@@ -53,7 +53,8 @@ meeza-marketing-mcp secrets list
 | "Dashboard link required" | Open the link from Claude (`open_dashboard`) or from `meeza-marketing-mcp dashboard`; it contains your access key. |
 | Port 5057 already in use | Another instance is probably serving it, so its link works. Otherwise set `MEEZA_DASHBOARD_PORT`. |
 | Numbers do not change | Views are cached for 3 minutes. Click **Refresh**. |
-| Old links stopped working | `dashboard.key` was deleted or recreated. Get a new link. |
+| Old links stopped working | The key was rotated (`dashboard rotate-key`) or `dashboard.key` was deleted. Get a new link with `meeza-marketing-mcp dashboard` or the `open_dashboard` tool. |
+| "Port 5057 is in use by a program that is not this user's Meeza dashboard" | Something else listens on the port, or a Meeza instance from another Windows user. No link is issued on purpose. Close that program or set `MEEZA_DASHBOARD_PORT` to a free port. |
 
 ## Logs
 

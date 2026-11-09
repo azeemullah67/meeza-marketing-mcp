@@ -45,16 +45,18 @@ public sealed class Ga4Syncer(AnalyticsService analytics, FactStore facts) : IIn
 
     public async Task<AccountInfo> DescribeAsync(string externalId, CancellationToken ct)
     {
+        // Same allow-list check as the live tools: an excluded property is rejected before any request is made.
+        var id = (await analytics.ResolvePropertiesAsync(externalId, ct).ConfigureAwait(false)).Single();
         var props = await analytics.GetPropertiesAsync(ct).ConfigureAwait(false);
-        var p = props.FirstOrDefault(x => x.PropertyId == externalId);
+        var p = props.FirstOrDefault(x => x.PropertyId == id);
         // Probe the property (and learn its time zone and currency) with a tiny report.
-        var probe = await analytics.Client.RunReportAsync(externalId, new
+        var probe = await analytics.RunReportAsync(id, new
         {
             dateRanges = new[] { new { startDate = "yesterday", endDate = "today" } },
             metrics = new[] { new { name = "activeUsers" } },
             limit = 1,
         }, ct).ConfigureAwait(false);
-        return new AccountInfo(externalId, p?.DisplayName, probe.CurrencyCode, probe.TimeZone);
+        return new AccountInfo(id, p?.DisplayName, probe.CurrencyCode, probe.TimeZone);
     }
 
     public async Task<WindowResult> SyncWindowAsync(string projectId, AccountInfo account, DateOnly from, DateOnly to, Project project, CancellationToken ct)
@@ -184,7 +186,7 @@ public sealed class Ga4Syncer(AnalyticsService analytics, FactStore facts) : IIn
         {
             json["limit"] = PageSize;
             json["offset"] = offset;
-            var rep = await analytics.Client.RunReportAsync(pid, json, ct).ConfigureAwait(false);
+            var rep = await analytics.RunReportAsync(pid, json, ct).ConfigureAwait(false);
             first ??= rep;
             rows.AddRange(rep.Rows);
             if (rep.Rows.Count < PageSize || offset > 2_000_000) break;

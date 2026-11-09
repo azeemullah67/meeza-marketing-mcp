@@ -45,9 +45,29 @@ public sealed class AnalyticsService(AnalyticsClient client)
 
     private volatile IReadOnlyList<Ga4Property>? _properties;
 
-    public AnalyticsClient Client => client;
     public bool IsConfigured => client.Options.IsConfigured;
+    public bool UsesPlayKey => client.Options.UsesPlayKey;
     public void ResetCache() => _properties = null;
+
+    /// <summary>The GA4_PROPERTY_IDS allow-list (normalized). Empty means every property the service account can see.</summary>
+    public IReadOnlyList<string> AllowedPropertyIds => client.Options.PropertyIds;
+
+    /// <summary>
+    /// Throws unless <paramref name="propertyId"/> may be queried. This is the single authorization point: every report,
+    /// including the synchronizer's, goes through <see cref="RunReportAsync"/>, which calls it.
+    /// </summary>
+    public string Authorize(string propertyId)
+    {
+        var id = AnalyticsOptions.NormalizePropertyId(propertyId);
+        var allow = client.Options.PropertyIds;
+        if (allow.Count > 0 && !allow.Contains(id))
+            throw new AccountAccessDeniedException(AnalyticsOptions.Platform, id, "it is not in GA4_PROPERTY_IDS");
+        return id;
+    }
+
+    /// <summary>Runs a Data API report after checking the property against the allow-list. The only way to reach the client's report call.</summary>
+    public Task<Ga4Report> RunReportAsync(string propertyId, object body, CancellationToken ct) =>
+        client.RunReportAsync(Authorize(propertyId), body, ct);
 
     public async Task<IReadOnlyList<Ga4Property>> GetPropertiesAsync(CancellationToken ct)
     {
@@ -94,7 +114,7 @@ public sealed class AnalyticsService(AnalyticsClient client)
             throw new ArgumentException($"Unknown breakdown '{breakdown}'. Use one of: {string.Join(", ", Breakdowns.Keys)}.");
         var filter = PlatformFilter(platform);
 
-        var dailyTask = client.RunReportAsync(propertyId, new
+        var dailyTask = RunReportAsync(propertyId, new
         {
             dateRanges = new[] { DateRangeJson(range) },
             dimensions = new[] { new { name = "date" } },
@@ -104,13 +124,13 @@ public sealed class AnalyticsService(AnalyticsClient client)
             limit = 1000,
             keepEmptyRows = true,
         }, ct);
-        var totalTask = client.RunReportAsync(propertyId, new
+        var totalTask = RunReportAsync(propertyId, new
         {
             dateRanges = new[] { DateRangeJson(range) },
             metrics = new[] { M("activeUsers"), M("newUsers"), M("userEngagementDuration") },
             dimensionFilter = filter,
         }, ct);
-        Task<Ga4Report>? breakdownTask = breakdownDim is null ? null : client.RunReportAsync(propertyId, new
+        Task<Ga4Report>? breakdownTask = breakdownDim is null ? null : RunReportAsync(propertyId, new
         {
             dateRanges = new[] { DateRangeJson(range) },
             dimensions = new[] { new { name = breakdownDim } },
@@ -179,7 +199,7 @@ public sealed class AnalyticsService(AnalyticsClient client)
 
         var dates = Enumerable.Range(0, cohortRange.Days).Select(i => cohortRange.Start.AddDays(i)).ToArray();
         var filter = And(PlatformFilter(platform), AppVersionFilter(appVersion));
-        var tasks = dates.Chunk(MaxCohortsPerRequest).Select(chunk => client.RunReportAsync(propertyId, new
+        var tasks = dates.Chunk(MaxCohortsPerRequest).Select(chunk => RunReportAsync(propertyId, new
         {
             dimensions = new[] { new { name = "cohort" }, new { name = "cohortNthDay" } },
             metrics = new[] { M("cohortActiveUsers"), M("cohortTotalUsers") },
@@ -219,7 +239,7 @@ public sealed class AnalyticsService(AnalyticsClient client)
     public async Task<RevenueReport> GetRevenueAsync(string propertyId, DateRange range, string? platform, CancellationToken ct)
     {
         var filter = PlatformFilter(platform);
-        var rep = await client.RunReportAsync(propertyId, new
+        var rep = await RunReportAsync(propertyId, new
         {
             dateRanges = new[] { DateRangeJson(range) },
             dimensions = new[] { new { name = "date" } },
@@ -248,7 +268,7 @@ public sealed class AnalyticsService(AnalyticsClient client)
     {
         var filter = And(PlatformFilter(platform), AppVersionFilter(appVersion),
             new { filter = new { fieldName = "eventName", inListFilter = new { values = ProgressionMath.AllEvents } } });
-        var rep = await client.RunReportAsync(propertyId, new
+        var rep = await RunReportAsync(propertyId, new
         {
             dateRanges = new[] { DateRangeJson(range) },
             dimensions = new[]
@@ -276,7 +296,7 @@ public sealed class AnalyticsService(AnalyticsClient client)
             // sum(success) over level_end = wins, eventCount - wins = losses (events, not distinct players).
             try
             {
-                var metricRep = await client.RunReportAsync(propertyId, new
+                var metricRep = await RunReportAsync(propertyId, new
                 {
                     dateRanges = new[] { DateRangeJson(range) },
                     dimensions = new[] { new { name = "customEvent:mode" }, new { name = "customEvent:level_name" } },

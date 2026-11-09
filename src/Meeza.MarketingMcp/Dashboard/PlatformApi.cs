@@ -39,7 +39,9 @@ public static class PlatformApi
         app.MapPost(g + "/projects", (HttpRequest req) => Handle(async () =>
         {
             var body = await Body<ProjectInput>(req);
-            var created = projects.Create(body.ToProject());
+            var input = body.ToProject();
+            EnsureAllowed(sp, input.Connections);
+            var created = projects.Create(input);
             if (body.SyncNow != false && created.Connections.Count > 0) _ = sync.StartProjectSync(created.Id, "project_created");
             return created;
         }));
@@ -47,15 +49,19 @@ public static class PlatformApi
         app.MapPost(g + "/projects/{id}", (string id, HttpRequest req) => Handle(async () =>
         {
             var body = await Body<ProjectInput>(req);
+            var conns = body.Connections?.Select(c => c.ToConnection()).ToArray();
+            if (conns is not null) EnsureAllowed(sp, conns);
             var updated = projects.Update(id, body.ToProject());
-            if (body.Connections is not null) updated = projects.SetConnections(id, body.Connections.Select(c => c.ToConnection()).ToArray());
+            if (conns is not null) updated = projects.SetConnections(id, conns);
             return updated;
         }));
         app.MapPost(g + "/projects/{id}/delete", (string id) => Handle(() => Task.FromResult<object>(new { deleted = projects.Delete(id) })));
         app.MapPost(g + "/projects/{id}/connections", (string id, HttpRequest req) => Handle(async () =>
         {
             var body = await Body<List<ConnectionInput>>(req);
-            var p = projects.SetConnections(id, body.Select(c => c.ToConnection()).ToArray());
+            var conns = body.Select(c => c.ToConnection()).ToArray();
+            EnsureAllowed(sp, conns);
+            var p = projects.SetConnections(id, conns);
             _ = sync.StartProjectSync(id, "connections_changed");
             return p;
         }));
@@ -124,9 +130,47 @@ public static class PlatformApi
             var body = await Body<ResearchRequest>(req);
             return research.Start(id, body.Topic ?? "custom", body.Question);
         }));
+        app.MapPost(g + "/projects/{id}/research/{rid:long}/cancel", (string id, long rid) =>
+            Handle(() => Task.FromResult<object>(new { cancelled = research.Cancel(projects.Require(id).Id, rid) })));
     }
 
     // ---------------------------------------------------------------- helpers
+
+    /// <summary>
+    /// A project may only link accounts inside the configured allow-lists (META_AD_ACCOUNT_IDS, GOOGLE_ADS_CUSTOMER_IDS,
+    /// GA4_PROPERTY_IDS, PLAY_PACKAGE_NAMES). Checked at save time so an excluded account can never be scheduled for sync.
+    /// </summary>
+    private static void EnsureAllowed(IServiceProvider sp, IEnumerable<ProjectConnection> connections)
+    {
+        var meta = sp.GetRequiredService<MetaAdsClient>().Options.AdAccountIds;
+        var google = sp.GetRequiredService<GoogleAdsPlatform>().Client.Options.CustomerIds;
+        var ga4 = sp.GetRequiredService<AnalyticsService>().AllowedPropertyIds;
+        var play = sp.GetRequiredService<PlayConsoleService>().Client.Options.PackageNames;
+        foreach (var c in connections)
+        {
+            switch (c.Integration)
+            {
+                case Integrations.Meta:
+                    Check(meta, MetaAdsOptions.NormalizeAccountId(c.ExternalId), MetaAdsOptions.Platform, "META_AD_ACCOUNT_IDS");
+                    break;
+                case Integrations.GoogleAds:
+                    Check(google, GoogleAdsOptions.NormalizeCustomerId(c.ExternalId), GoogleAdsOptions.Platform, "GOOGLE_ADS_CUSTOMER_IDS");
+                    break;
+                case Integrations.Ga4:
+                    Check(ga4, AnalyticsOptions.NormalizePropertyId(c.ExternalId), AnalyticsOptions.Platform, "GA4_PROPERTY_IDS");
+                    break;
+                case Integrations.GooglePlay:
+                    Check(play, c.ExternalId.Trim(), PlayConsoleOptions.Platform, "PLAY_PACKAGE_NAMES");
+                    break;
+            }
+        }
+
+        static void Check(IReadOnlyList<string> allow, string id, string platform, string setting)
+        {
+            if (allow.Count > 0 && !allow.Contains(id, StringComparer.OrdinalIgnoreCase))
+                throw new AccountAccessDeniedException(platform, id, $"it is not in {setting}");
+        }
+    }
 
     private static object Summary(Project p, AnalyticsEngine engine) => new { project = p, status = engine.Status(p) };
 

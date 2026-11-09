@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using Meeza.Marketing.Shared.Security;
 using Microsoft.Data.Sqlite;
 
 namespace Meeza.MarketingMcp.Storage;
@@ -16,8 +17,15 @@ public sealed class MarketingDb
     public MarketingDb(string path)
     {
         Path = path;
-        if (path != ":memory:" && !path.StartsWith("file:", StringComparison.Ordinal))
-            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path))!);
+        var onDisk = path != ":memory:" && !path.StartsWith("file:", StringComparison.Ordinal);
+        if (onDisk)
+        {
+            var dir = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path))!;
+            // The default data directory is private to the user (0700 / explicit ACL). A custom MEEZA_DB_PATH may point into a
+            // shared folder whose permissions are not ours to change, so only the database files are tightened there.
+            if (PrivateStorage.IsInDefaultDirectory(path)) PrivateStorage.EnsurePrivateDirectory(dir);
+            else Directory.CreateDirectory(dir);
+        }
         _connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = path,
@@ -26,6 +34,9 @@ public sealed class MarketingDb
             DefaultTimeout = 30,
         }.ToString();
         Migrate();
+        // The database holds business metrics, prompts and analyst history: user-only on every platform. SQLite gives the
+        // WAL / SHM side files the main file's mode, and on Windows they inherit the directory ACL.
+        if (onDisk) PrivateStorage.MakeDatabasePrivate(path);
     }
 
     public string Path { get; }

@@ -21,6 +21,7 @@ public static class CliCommands
           meeza-marketing-mcp dashboard             Open the live dashboard in your browser (http://127.0.0.1:5057)
           meeza-marketing-mcp dashboard --demo      Preview the dashboard with generated sample data
                                      --no-browser  Print the link without opening a browser
+          meeza-marketing-mcp dashboard rotate-key  Replace the dashboard access key (every old link and browser session stops working)
           meeza-marketing-mcp check                 Show configuration and test each platform connection
           meeza-marketing-mcp secrets list          List known settings and where each value comes from (masked)
           meeza-marketing-mcp secrets set NAME      Store a secret encrypted for the current user (prompts; or pipe it in)
@@ -47,6 +48,7 @@ public static class CliCommands
             return args[0].ToLowerInvariant() switch
             {
                 "check" => await CheckAsync(services),
+                "dashboard" when args.Length > 1 && args[1].Equals("rotate-key", StringComparison.OrdinalIgnoreCase) => RotateDashboardKey(),
                 "dashboard" => await DashboardAsync(services, args.Any(a => a.Equals("--demo", StringComparison.OrdinalIgnoreCase)), !args.Any(a => a.Equals("--no-browser", StringComparison.OrdinalIgnoreCase))),
                 "secrets" => Secrets(args.Skip(1).ToArray(), services),
                 "projects" => Projects(services),
@@ -70,11 +72,22 @@ public static class CliCommands
 
     // ---------------------------------------------------------------- dashboard
 
+    private static int RotateDashboardKey()
+    {
+        Meeza.MarketingMcp.Dashboard.AccessKey.Rotate();
+        Console.WriteLine("Dashboard access key replaced. Every old link and browser session is now invalid, in every running instance.");
+        Console.WriteLine("New link: " + Meeza.MarketingMcp.Dashboard.DashboardServer.Url);
+        return 0;
+    }
+
     private static async Task<int> DashboardAsync(IServiceProvider sp, bool demo, bool openBrowser)
     {
         var url = Meeza.MarketingMcp.Dashboard.DashboardServer.Url;
         if (Meeza.MarketingMcp.Dashboard.DashboardServer.PortInUse())
         {
+            // Never hand the access key to an unidentified listener: the running process must answer the identity challenge.
+            if (!await Meeza.MarketingMcp.Dashboard.DashboardServer.IsOurInstanceAsync(CancellationToken.None))
+                throw new InvalidOperationException(Meeza.MarketingMcp.Dashboard.DashboardServer.PortBusyMessage);
             if (demo) throw new InvalidOperationException($"Port {Meeza.MarketingMcp.Dashboard.DashboardServer.Port} is in use by the live dashboard. Set MEEZA_DASHBOARD_PORT to another port for the demo.");
             Console.WriteLine("The dashboard is already running (started by Claude or another terminal).");
             Console.WriteLine("Open: " + url);
@@ -312,7 +325,7 @@ public static class CliCommands
             try
             {
                 var props = await ga4.GetPropertiesAsync(cts.Token);
-                Console.WriteLine($"OK - service account {ga4.SafeEmail()}{(ga4.Client.Options.UsesPlayKey ? " (Play key)" : "")}, {props.Count} propert{(props.Count == 1 ? "y" : "ies")}");
+                Console.WriteLine($"OK - service account {ga4.SafeEmail()}{(ga4.UsesPlayKey ? " (Play key)" : "")}, {props.Count} propert{(props.Count == 1 ? "y" : "ies")}");
                 foreach (var p in props) Console.WriteLine($"             {p.PropertyId}  {p.DisplayName}  [{p.AccountName}]");
                 if (props.Count == 0) Console.WriteLine("             Add the service account as a Viewer in GA4 → Admin → Property access management.");
             }
