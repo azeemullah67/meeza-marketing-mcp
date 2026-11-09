@@ -92,6 +92,11 @@ dotnet publish src/Meeza.MarketingMcp -c Release -o publish
    claude mcp add meeza-marketing -- "C:\path\to\publish\meeza-marketing-mcp.exe"
    ```
 
+5. **Optional: install the skill.** [`skills/meeza-marketing/SKILL.md`](skills/meeza-marketing/SKILL.md) tells the
+   agent when to reach for which tool, how to read attribution and retention correctly, and how to answer a
+   marketer. For Claude Code copy the folder to `.claude/skills/meeza-marketing/` (project) or
+   `~/.claude/skills/meeza-marketing/` (user); other agents that read `SKILL.md` files work the same way.
+
 ## Configuration
 
 Settings are resolved in this order:
@@ -144,7 +149,8 @@ src/
   Meeza.Marketing.GoogleAds/   Google Ads API (REST + GAQL) client and tools
   Meeza.Marketing.PlayConsole/ Play Developer Reporting API, reviews, bulk-report exports
 tests/Meeza.Marketing.Tests/   Unit tests (no network)
-docs/                          Setup guides, architecture, troubleshooting
+skills/meeza-marketing/        SKILL.md: when and how an agent should use these tools
+docs/                          Setup guides, architecture, security, troubleshooting
 examples/                      Claude config and example prompts
 ```
 
