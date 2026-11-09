@@ -2,7 +2,15 @@
 
 The server includes a local, read-only web dashboard. It uses the same platform connections as the MCP tools.
 
-![Dashboard (demo data)](images/dashboard-demo.png)
+![Overview page (synthetic demo data)](images/dashboard-overview.png)
+
+*Overview: verdict, top actions, KPI tiles vs targets, prioritised marketing plan, findings that need attention.*
+
+![Retention & cohorts page (synthetic demo data)](images/dashboard-retention.png)
+
+*Retention & cohorts: D1/D3/D7 against the previous period, retention curve, D1 churn trend and the day 0–30 cohort heatmap, segmentable by country, platform, channel, campaign, ad group or creative.*
+
+Both screenshots use an invented "Puzzle Quest" project, not real accounts.
 
 ## Opening it
 

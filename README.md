@@ -6,7 +6,9 @@ The server isn't tied to any game, company or ad account. Each user runs it on t
 
 > **Live dashboard included.** When Claude connects, a private local dashboard starts at `http://127.0.0.1:5057`. It shows spend, installs and CPI **by ad**, ad set or campaign, plus daily trends, countries and Google Play health. Ask Claude to *"open the marketing dashboard"*, or run `meeza-marketing-mcp dashboard`. Try it with sample data: `meeza-marketing-mcp dashboard --demo`. See [docs/dashboard.md](docs/dashboard.md).
 >
-> ![Dashboard (demo data)](docs/images/dashboard-demo.png)
+> ![Overview page of the Meeza Growth dashboard, showing a synthetic demo project](docs/images/dashboard-overview.png)
+>
+> *Overview page with invented demo data: plan verdict, top actions, KPI tiles against targets, prioritised marketing plan and findings. See [docs/dashboard.md](docs/dashboard.md) for the retention and cohort views.*
 
 > **Marketing intelligence platform.** The dashboard is now a multi-project app: create a project per game, link its Google Ads / Meta / GA4 accounts, and it keeps a synchronized local history (backfill + hourly incremental sync with freshness tracking). Pages: executive KPIs with targets, acquisition and attribution reconciliation, D0–D30 cohort retention, campaigns, creative intelligence, funnel, budget forecasting, an AI analyst and cited market research. The previous dashboard remains at `/classic`. See [docs/platform.md](docs/platform.md).
 
