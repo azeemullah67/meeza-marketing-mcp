@@ -144,6 +144,7 @@ public sealed class DashboardServer(DashboardData data, Services.ConnectionSetti
             ctx.Response.StatusCode = StatusCodes.Status421MisdirectedRequest;
             return;
         }
+        InstanceIdentity.EnsureRegistered();
         // Identity challenge for other Meeza processes (see InstanceIdentity). Unauthenticated by design: the answer is an
         // HMAC over the caller's nonce and reveals neither the instance token nor the access key.
         if (HttpMethods.IsGet(ctx.Request.Method) && ctx.Request.Path == InstanceIdentity.RoutePath)
@@ -418,18 +419,23 @@ public static class AccessKey
 public static class InstanceIdentity
 {
     public const string RoutePath = "/__meeza/instance";
-    public static string FilePath => Path.Combine(PrivateStorage.DefaultDirectory, "dashboard.instance");
+
+    /// <summary>One file per port, so a second instance on another port (tests, a demo) never overwrites the live one's record.</summary>
+    public static string FilePathFor(int port) => Path.Combine(PrivateStorage.DefaultDirectory, $"dashboard-{port}.instance");
 
     private static string? _token;
+    private static int _port;
 
     public static void Register(int port)
     {
         _token = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
+        _port = port;
+        var file = FilePathFor(port);
         try
         {
-            PrivateStorage.EnsurePrivateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(new { pid = Environment.ProcessId, port, token = _token, startedAt = DateTimeOffset.UtcNow }));
-            PrivateStorage.MakeFilePrivate(FilePath);
+            PrivateStorage.EnsurePrivateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllText(file, JsonSerializer.Serialize(new { pid = Environment.ProcessId, port, token = _token, startedAt = DateTimeOffset.UtcNow }));
+            PrivateStorage.MakeFilePrivate(file);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -437,12 +443,27 @@ public static class InstanceIdentity
         }
     }
 
-    public static void Unregister()
+    /// <summary>Rewrites the record if it disappeared (another process cleaned up, profile tooling, a crash of a sibling instance).</summary>
+    public static void EnsureRegistered()
     {
+        if (_token is null) return;
+        var file = FilePathFor(_port);
         try
         {
-            if (_token is not null && File.Exists(FilePath) && File.ReadAllText(FilePath).Contains(_token, StringComparison.Ordinal))
-                File.Delete(FilePath);
+            if (File.Exists(file)) return;
+            File.WriteAllText(file, JsonSerializer.Serialize(new { pid = Environment.ProcessId, port = _port, token = _token, startedAt = DateTimeOffset.UtcNow }));
+            PrivateStorage.MakeFilePrivate(file);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    public static void Unregister()
+    {
+        var file = FilePathFor(_port);
+        try
+        {
+            if (_token is not null && File.Exists(file) && File.ReadAllText(file).Contains(_token, StringComparison.Ordinal))
+                File.Delete(file);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         _token = null;
@@ -451,7 +472,7 @@ public static class InstanceIdentity
     /// <summary>The server's answer to a challenge, or null when this process is not a registered dashboard.</summary>
     public static string? Answer(string nonce) => _token is null ? null : Proof(_token, nonce);
 
-    public static Task<bool> IsOurInstanceAsync(int port, CancellationToken ct) => IsOurInstanceAsync(port, FilePath, ct);
+    public static Task<bool> IsOurInstanceAsync(int port, CancellationToken ct) => IsOurInstanceAsync(port, FilePathFor(port), ct);
 
     /// <summary>True only when the listener on <paramref name="port"/> proves knowledge of the token in <paramref name="filePath"/>.</summary>
     public static async Task<bool> IsOurInstanceAsync(int port, string filePath, CancellationToken ct)

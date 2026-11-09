@@ -23,7 +23,7 @@ What the server protects, how, and what it does not do. For setup see the platfo
 
 - `%APPDATA%\MeezaMarketingMcp\dashboard.key` is user-private (0600 / explicit ACL). The link printed by `open_dashboard` and `meeza-marketing-mcp dashboard` carries it once; the browser then holds an HttpOnly, SameSite=Strict cookie.
 - **Revocation is immediate.** The key file is re-checked on every request. `meeza-marketing-mcp dashboard rotate-key` replaces it; deleting the file has the same effect. Old links and cookies stop working in every running instance on their next request, no restart needed.
-- **Port reuse requires proof.** Before a link is handed out for an already-running dashboard, the caller challenges the listener on the port with a nonce and expects an HMAC computed with a random token the real instance wrote to a user-private file (`dashboard.instance`). A different program squatting on the port cannot answer, and no link is issued ("Port 5057 is in use by a program that is not this user's Meeza dashboard"). Set `MEEZA_DASHBOARD_PORT` to move.
+- **Port reuse requires proof.** Before a link is handed out for an already-running dashboard, the caller challenges the listener on the port with a nonce and expects an HMAC computed with a random token the real instance wrote to a user-private file (`dashboard-<port>.instance`, one per port so a second instance never overwrites the first's record). A different program squatting on the port cannot answer, and no link is issued ("Port 5057 is in use by a program that is not this user's Meeza dashboard"). Set `MEEZA_DASHBOARD_PORT` to move.
 
 ## Data directory permissions
 
