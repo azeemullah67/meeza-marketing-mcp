@@ -491,7 +491,8 @@ public sealed partial class AnalyticsEngine
         if (ranked.Length >= 2)
         {
             var best = ranked.First(x => x.Evidence || ranked.All(r => !r.Evidence));
-            foreach (var worst in ranked.Reverse().Where(x => x.Entity.Key != best.Entity.Key && x.Value < best.Value * 0.6m).Take(2))
+            // Enumerable.Reverse explicitly: on an array, newer compilers bind .Reverse() to the void MemoryExtensions span overload.
+            foreach (var worst in Enumerable.Reverse(ranked).Where(x => x.Entity.Key != best.Entity.Key && x.Value < best.Value * 0.6m).Take(2))
             {
                 var move = Math.Round(worst.Entity.Now.Spend / Math.Max(1, history.Days) * 0.25m, 2);
                 proposals.Add(new
