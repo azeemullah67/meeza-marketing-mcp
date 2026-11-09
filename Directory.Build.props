@@ -1,0 +1,14 @@
+﻿<Project>
+  <!-- Central build settings. Change MeezaTargetFramework to net10.0 once the .NET 10 SDK is installed. -->
+  <PropertyGroup>
+    <MeezaTargetFramework Condition="'$(MeezaTargetFramework)' == ''">net9.0</MeezaTargetFramework>
+    <TargetFramework>$(MeezaTargetFramework)</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Company>Meeza Technologies</Company>
+    <Product>Meeza Marketing MCP</Product>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+</Project>

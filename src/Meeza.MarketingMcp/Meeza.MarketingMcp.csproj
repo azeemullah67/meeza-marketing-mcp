@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Meeza.Marketing.Shared\Meeza.Marketing.Shared.csproj" />
+    <ProjectReference Include="..\Meeza.Marketing.Meta\Meeza.Marketing.Meta.csproj" />
+    <ProjectReference Include="..\Meeza.Marketing.GoogleAds\Meeza.Marketing.GoogleAds.csproj" />
+    <ProjectReference Include="..\Meeza.Marketing.PlayConsole\Meeza.Marketing.PlayConsole.csproj" />
+    <ProjectReference Include="..\Meeza.Marketing.Analytics\Meeza.Marketing.Analytics.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Anthropic" Version="13.6.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
+    <PackageReference Include="ModelContextProtocol" Version="2.3.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Meeza.Marketing.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Dashboard/app.html" LogicalName="Meeza.MarketingMcp.Dashboard.app.html" />
+    <EmbeddedResource Include="Benchmarks/benchmarks.json" LogicalName="Meeza.MarketingMcp.Benchmarks.benchmarks.json" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <AssemblyName>meeza-marketing-mcp</AssemblyName>
+    <RootNamespace>Meeza.MarketingMcp</RootNamespace>
+  </PropertyGroup>
+
+</Project>
+

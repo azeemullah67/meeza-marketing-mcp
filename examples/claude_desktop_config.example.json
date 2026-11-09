@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "meeza-marketing": {
+      "command": "C:\\path\\to\\meeza-marketing-mcp\\publish\\meeza-marketing-mcp.exe",
+      "args": [],
+      "env": {
+        "META_AD_ACCOUNT_IDS": "act_1234567890",
+        "GOOGLE_ADS_CLIENT_ID": "1234567890-abc.apps.googleusercontent.com",
+        "GOOGLE_ADS_LOGIN_CUSTOMER_ID": "123-456-7890",
+        "PLAY_SERVICE_ACCOUNT_KEY_PATH": "C:\\secure\\play-reporting-key.json",
+        "PLAY_PACKAGE_NAMES": "com.example.game",
+        "PLAY_REPORTS_BUCKET": "pubsite_prod_rev_01234567890987654321"
+      }
+    }
+  }
+}

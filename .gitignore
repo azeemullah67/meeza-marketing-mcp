@@ -1,0 +1,35 @@
+# Build output
+bin/
+obj/
+publish/
+artifacts/
+TestResults/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+
+# Secrets - never commit credentials
+.env
+.env.*
+*.env
+secrets.json
+appsettings.*.local.json
+appsettings.Development.json
+**/service-account*.json
+**/*-key.json
+*.pem
+*.p12
+client_secret*.json
+claude_desktop_config.json
+!examples/claude_desktop_config.example.json
+
+# Browser automation output - console logs and page snapshots capture auth
+# headers, API keys and tokens from logged-in sessions. Never commit.
+.playwright-cli/
+
+# Local backups and publish copies
+publish.bak*/
+*.bak
+*.orig

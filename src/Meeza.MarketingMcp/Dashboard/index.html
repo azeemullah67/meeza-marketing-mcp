@@ -1,0 +1,2447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meeza Marketing</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M8 22V10l8 7 8-7v12' stroke='white' stroke-width='3' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: light;
+  --surface-0: #f5f7fb;
+  --surface-1: #ffffff;
+  --surface-2: #f1f4f8;
+  --border: #e3e7ee;
+  --border-strong: #cdd3dd;
+  --text-primary: #10131a;
+  --text-secondary: #4b5262;
+  --text-muted: #646c7d;
+  --grid: #e9edf3;
+  --accent: #2a78d6;
+  --accent-soft: #e5effb;
+  --series-meta: #2a78d6;
+  --series-google: #d4561f;
+  --seq-1: #cde2fb; --seq-3: #6da7ec; --seq-5: #256abf;
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --good-text: #006300; --critical-text: #b42828; --serious-text: #a8461f;
+  --shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 14px rgba(16,24,40,.05);
+  --accent-strong: #2369c4;
+  --shadow-pop: 0 6px 20px rgba(16,24,40,.14);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="soft"]) {
+    color-scheme: dark;
+    --surface-0: #1b1f27; --surface-1: #242a34; --surface-2: #2d3440;
+    --border: #39414e; --border-strong: #4a5363;
+    --text-primary: #f1f3f7; --text-secondary: #c5cbd6; --text-muted: #9aa3b2;
+    --grid: #343b47; --accent: #4a92ea; --accent-soft: #263a55;
+    --series-meta: #3987e5; --series-google: #d95926;
+    --seq-1: #21558f; --seq-3: #3987e5; --seq-5: #9ec5f4;
+    --good-text: #4cc94c; --critical-text: #f08080; --serious-text: #f2a07f;
+    --shadow: none; --accent-strong: #2b72c9; --shadow-pop: 0 8px 24px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="soft"] {
+  color-scheme: light;
+  --surface-0: #dfe3ea;
+  --surface-1: #f1f3f6;
+  --surface-2: #e6e9ef;
+  --border: #c9d0da;
+  --border-strong: #b9c1cd;
+  --text-primary: #161a22;
+  --text-secondary: #464d5c;
+  --text-muted: #5c6475;
+  --grid: #d9dee6;
+  --accent: #2266bf;
+  --accent-strong: #2266bf;
+  --series-meta: #2a78d6;
+  --series-google: #d4561f;
+  --accent-soft: #d8e5f6;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 3px 10px rgba(16,24,40,.05);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #1b1f27; --surface-1: #242a34; --surface-2: #2d3440;
+  --border: #39414e; --border-strong: #4a5363;
+  --text-primary: #f1f3f7; --text-secondary: #c5cbd6; --text-muted: #9aa3b2;
+  --grid: #343b47; --accent: #4a92ea; --accent-soft: #263a55;
+  --series-meta: #3987e5; --series-google: #d95926;
+  --seq-1: #21558f; --seq-3: #3987e5; --seq-5: #9ec5f4;
+  --good-text: #4cc94c; --critical-text: #f08080; --serious-text: #f2a07f;
+  --shadow: none; --accent-strong: #2b72c9; --shadow-pop: 0 8px 24px rgba(0,0,0,.45);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--surface-0); color: var(--text-primary);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.num, td.n, th.n { font-variant-numeric: tabular-nums; }
+button, select, input { font: inherit; color: inherit; }
+a { color: var(--accent); }
+
+/* ---------- layout ---------- */
+header.top {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--surface-0) 88%, transparent);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+}
+.wrap { max-width: 1440px; margin: 0 auto; padding: 0 20px; }
+.bar { display: flex; align-items: center; gap: 16px; min-height: 56px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 15px; white-space: nowrap; }
+.brand .logo { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); display: grid; place-items: center; }
+.brand small { font-weight: 500; color: var(--text-muted); font-size: 12px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-1); font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+.chip.ok .dot { background: var(--good); }
+.chip.err .dot { background: var(--critical); }
+.chip.off { opacity: .75; }
+.spacer { flex: 1; }
+.updated { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+a.btn { text-decoration: none; color: inherit; }
+.btn { border: 1px solid var(--border-strong); background: var(--surface-1); border-radius: 8px; padding: 6px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:hover { background: var(--surface-2); }
+.btn:focus-visible, .seg button:focus-visible, select:focus-visible, input:focus-visible, th button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn.primary { background: var(--accent-strong, var(--accent)); border-color: var(--accent-strong, var(--accent)); color: #fff; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn .spin { display: none; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+.loading .btn .spin { display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.filters { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 0 12px; }
+.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; background: var(--surface-1); }
+.seg button { border: 0; background: transparent; padding: 6px 11px; cursor: pointer; color: var(--text-secondary); white-space: nowrap; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--text-primary); font-weight: 600; }
+.field { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 13px; }
+select, input[type=date], input[type=search] { border: 1px solid var(--border-strong); background: var(--surface-1); border-radius: 8px; padding: 5px 9px; }
+input[type=search] { min-width: 220px; }
+
+main { padding: 16px 0 48px; display: grid; gap: 16px; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); }
+.card > .hd { display: flex; align-items: center; gap: 12px; padding: 14px 16px 0; flex-wrap: wrap; }
+.card > .hd h2 { font-size: 15px; margin: 0; font-weight: 650; }
+.card > .hd .sub { color: var(--text-muted); font-size: 12px; }
+.card > .bd { padding: 12px 16px 16px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1180px) { .grid-3 { grid-template-columns: 1fr 1fr; } .grid-3 > :last-child { grid-column: 1 / -1; } }
+@media (max-width: 760px) { .grid-3 { grid-template-columns: 1fr; } }
+/* ---------- issue strip ---------- */
+.issues { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 6px 0 8px; overflow-x: auto; scrollbar-width: thin; }
+.issues .ilabel { flex: none; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.issue { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 420px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.issue span.t { overflow: hidden; text-overflow: ellipsis; }
+.issue:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.issue i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+.issue.critical { border-color: color-mix(in srgb, var(--critical) 45%, var(--border)); } .issue.critical i { background: var(--critical); }
+.issue.warning { border-color: color-mix(in srgb, var(--warning) 55%, var(--border)); } .issue.warning i { background: var(--warning); }
+.issue.ok i { background: var(--good); } .issue.ok { cursor: default; color: var(--text-secondary); }
+/* ---------- error dialog ---------- */
+dialog.modal { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 0; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface-1); color: var(--text-primary); box-shadow: 0 24px 60px rgba(16,24,40,.28); }
+dialog.modal::backdrop { background: rgba(10,14,22,.45); backdrop-filter: blur(2px); }
+dialog.modal .mh { display: flex; align-items: center; gap: 10px; padding: 16px 18px 10px; }
+dialog.modal .mh h2 { margin: 0; font-size: 16px; }
+dialog.modal .mh .ico { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--critical) 14%, var(--surface-1)); color: var(--critical-text); font-weight: 800; }
+dialog.modal .mb { padding: 0 18px 8px; overflow: auto; max-height: 60dvh; }
+dialog.modal .eitem { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+dialog.modal .eitem .ep { font-weight: 650; font-size: 13px; }
+dialog.modal .eitem .fix { margin-top: 4px; font-size: 13px; color: var(--text-secondary); }
+dialog.modal .eitem details { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+dialog.modal .eitem details code { white-space: pre-wrap; word-break: break-word; font-size: 11.5px; }
+dialog.modal .mf { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 18px 16px; border-top: 1px solid var(--border); }
+.rcharts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .rcharts { grid-template-columns: 1fr; } }
+.rcharts .chart { height: 210px; }
+.rcharts .ctitle { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+@media (max-width: 960px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* ---------- banners ---------- */
+.banner { border-radius: 10px; padding: 10px 14px; border: 1px solid; display: flex; gap: 10px; align-items: flex-start; }
+.banner.err { border-color: color-mix(in srgb, var(--critical) 45%, transparent); background: color-mix(in srgb, var(--critical) 8%, var(--surface-1)); }
+.banner.info { border-color: var(--border-strong); background: var(--surface-1); }
+.banner ul { margin: 4px 0 0; padding-left: 18px; }
+.banner b { font-weight: 650; }
+
+/* ---------- KPI tiles ---------- */
+.kpis { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1280px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi { padding: 14px 16px; }
+.kpi .label { color: var(--text-secondary); font-size: 12px; font-weight: 550; text-transform: uppercase; letter-spacing: .04em; }
+.kpi .value { font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 650; margin-top: 4px; letter-spacing: -.01em; }
+.kpi .value.na { color: var(--text-muted); }
+.kpi .split { margin-top: 6px; display: grid; gap: 2px; font-size: 12px; color: var(--text-secondary); }
+.kpi .split span.k { display: inline-flex; align-items: center; gap: 6px; }
+.kpi .split div { display: flex; justify-content: space-between; gap: 8px; }
+.sw { width: 8px; height: 8px; border-radius: 2px; display: inline-block; flex: none; }
+.sw.meta { background: var(--series-meta); }
+.sw.google_ads { background: var(--series-google); }
+.kpi .foot { margin-top: 6px; font-size: 11px; color: var(--text-muted); }
+
+/* ---------- charts ---------- */
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-secondary); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 2px; border-radius: 2px; display: inline-block; }
+.chart { position: relative; height: 230px; }
+.chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.chart .axis text { fill: var(--text-muted); font-size: 11px; }
+.chart .gridline { stroke: var(--grid); stroke-width: 1; }
+.chart .baseline { stroke: var(--border-strong); stroke-width: 1; }
+.chart .series { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .dlabel { fill: var(--text-secondary); font-size: 11px; font-weight: 600; }
+.chart .cross { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart .hoverdot { stroke: var(--surface-1); stroke-width: 2; }
+.tip { position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 150px; z-index: 5; display: none; }
+.tip .t { color: var(--text-muted); margin-bottom: 4px; }
+.tip .r { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.tip .r span { display: inline-flex; gap: 6px; align-items: center; color: var(--text-secondary); }
+.tip .r b { font-weight: 650; font-variant-numeric: tabular-nums; }
+.empty { color: var(--text-muted); padding: 24px 0; text-align: center; }
+details.tbl { margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
+details.tbl summary { cursor: pointer; }
+details.tbl table { margin-top: 8px; }
+
+/* ---------- tables ---------- */
+.tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td.name { white-space: normal; min-width: 240px; max-width: 420px; }
+th { font-size: 12px; color: var(--text-secondary); font-weight: 600; position: sticky; top: 0; background: var(--surface-1); z-index: 1; }
+th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+th.n, td.n { text-align: right; }
+th.n button { flex-direction: row-reverse; }
+th .arrow { opacity: .35; font-size: 10px; }
+th[aria-sort] .arrow { opacity: 1; color: var(--accent); }
+tbody tr:hover { background: var(--surface-2); }
+.nm { font-weight: 550; overflow-wrap: anywhere; }
+.crumb { font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; }
+.plat { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-secondary); }
+.badge.active { color: var(--good-text); border-color: color-mix(in srgb, var(--good) 50%, transparent); }
+.badge.paused { color: var(--text-muted); }
+.badge.warn { color: var(--serious-text); border-color: color-mix(in srgb, var(--serious) 55%, transparent); }
+.share { display: inline-flex; align-items: center; gap: 6px; }
+.share .track, .share .fill, .stars .track, .stars .fill { display: block; }
+.share .track { width: 64px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.share .fill { height: 100%; background: var(--seq-3); border-radius: 0 3px 3px 0; }
+.muted { color: var(--text-muted); }
+.more { display: flex; justify-content: center; gap: 12px; align-items: center; padding-top: 12px; color: var(--text-muted); font-size: 12px; }
+.dim { opacity: .55; transition: opacity .2s; }
+
+/* ---------- Play ---------- */
+.apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.app { border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: grid; gap: 12px; }
+.app h3 { margin: 0; font-size: 14px; }
+.app .pkg { color: var(--text-muted); font-size: 12px; }
+.vitals { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ptiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.rets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.rets .vital .value { font-size: 20px; }
+.verdict { border-radius: 10px; padding: 12px 14px; background: var(--surface-2); border-left: 4px solid var(--text-muted); }
+.verdict.strong, .verdict.promising { border-left-color: var(--good); }
+.verdict.iterate { border-left-color: var(--warning); }
+.verdict.fix_the_game { border-left-color: var(--critical); }
+.verdict ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+.g-excellent, .g-good { color: var(--good-text); } .g-weak { color: var(--critical); } .g-average { color: var(--text-secondary); }
+@media (max-width: 520px) { .rets { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.vital { background: var(--surface-2); border-radius: 8px; padding: 10px; }
+.vital .label { font-size: 12px; color: var(--text-secondary); }
+.vital .value { font-size: 20px; font-weight: 650; }
+.vital .state { font-size: 12px; font-weight: 600; display: inline-flex; gap: 4px; align-items: center; }
+.state.good { color: var(--good-text); }
+.state.bad { color: var(--critical-text); }
+.vital svg { width: 100%; height: 36px; display: block; margin-top: 6px; }
+.stars { display: grid; gap: 3px; font-size: 12px; }
+.stars .row { display: grid; grid-template-columns: 28px 1fr 34px; gap: 8px; align-items: center; color: var(--text-secondary); }
+.stars .track { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.stars .fill { height: 100%; background: var(--seq-3); border-radius: 0 4px 4px 0; }
+.review { border-top: 1px solid var(--border); padding-top: 8px; font-size: 13px; }
+.review .meta { color: var(--text-muted); font-size: 12px; }
+.review .txt { overflow-wrap: anywhere; }
+.stars-inline { letter-spacing: 1px; color: var(--text-secondary); }
+
+/* ---------- benchmarks ---------- */
+.bench-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.bench-h { font-size: 13px; font-weight: 650; margin: 0 0 8px; }
+.bench-h small { font-weight: 500; color: var(--text-muted); }
+.cmp { display: grid; gap: 10px; }
+.cmp-row { display: grid; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.cmp-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.cmp-row .lbl { font-size: 12px; color: var(--text-secondary); display: inline-flex; gap: 6px; align-items: center; }
+.cmp-row .vals { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.cmp-row .vals b { font-weight: 650; font-variant-numeric: tabular-nums; }
+.bullet { position: relative; height: 14px; }
+.bullet .rng { position: absolute; top: 4px; height: 6px; border-radius: 3px; background: var(--seq-1); }
+.bullet .med { position: absolute; top: 1px; width: 2px; height: 12px; background: var(--text-secondary); border-radius: 1px; }
+.bullet .you { position: absolute; top: 0; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; border: 2px solid var(--surface-1); }
+.bullet .axis { position: absolute; top: 7px; left: 0; right: 0; height: 1px; background: var(--border); }
+.cmp-src { font-size: 11px; color: var(--text-muted); }
+.playbook { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.play-item { border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: grid; gap: 6px; align-content: start; }
+.play-item h4 { margin: 0; font-size: 13px; }
+.play-item p { margin: 0; font-size: 12.5px; color: var(--text-secondary); }
+.play-item .who { font-size: 11px; color: var(--text-muted); }
+.tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--text-primary); }
+.sources { font-size: 12px; color: var(--text-muted); margin: 0; padding-left: 18px; }
+.sources a { overflow-wrap: anywhere; }
+.bench-tabs { margin-bottom: 12px; }
+table.compact th, table.compact td { padding: 6px 8px; }
+
+footer { color: var(--text-muted); font-size: 12px; padding: 0 0 32px; }
+footer ul { margin: 6px 0 0; padding-left: 18px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+main > *, .grid-2 > *, .kpis > * { min-width: 0; }
+.seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+@media (max-width: 640px) {
+  header.top { position: static; }
+  .wrap { padding: 0 16px; }
+  .bar { gap: 10px; padding: 10px 0; }
+  .updated { order: 10; width: 100%; }
+  input[type=search] { min-width: 0; width: 100%; }
+  .tools { width: 100%; }
+  .kpi .value { font-size: 22px; }
+}
+
+/* ---------- v2 refinements ---------- */
+html { scroll-behavior: smooth; }
+.brand .logo { background: linear-gradient(135deg, var(--series-meta), var(--series-google)); }
+.card > .hd h2 { font-size: 16px; }
+td { font-size: 13px; }
+main { gap: 20px; }
+#ovSec, #labCard, #perfCard, #benchCard, #countryCard, #playersCard, #playCard { scroll-margin-top: 160px; }
+a { text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 2px; }
+.ovsec { display: grid; gap: 12px; }
+
+/* connection status popover */
+.status { position: relative; }
+.status > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-1); font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.status > summary::-webkit-details-marker { display: none; }
+.status > summary:focus-visible { outline: 2px solid var(--accent); }
+.status .sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+.status.ok .sdot { background: var(--good); }
+.status.warn .sdot { background: var(--warning); }
+.status.err .sdot { background: var(--critical); }
+.status .pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; background: var(--surface-1); border: 1px solid var(--border-strong); border-radius: 10px; padding: 12px; display: grid; gap: 8px; min-width: 270px; box-shadow: 0 8px 24px rgba(0,0,0,.16); }
+.status .pop .chips { display: grid; gap: 6px; }
+.status .pop .chip { width: max-content; }
+
+/* section nav */
+.secnav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border); }
+.secnav a { padding: 9px 12px; font-size: 13px; font-weight: 550; color: var(--text-secondary); text-decoration: none; white-space: nowrap; }
+.secnav a:hover { color: var(--text-primary); }
+.secnav a[aria-current="true"] { color: var(--text-primary); box-shadow: inset 0 -2px var(--accent); }
+.secnav a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* insights strip */
+.insights { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 2px; }
+.insight { flex: 1 0 250px; max-width: 400px; background: var(--surface-1); border: 1px solid var(--border); border-left: 3px solid var(--serious); border-radius: 10px; padding: 10px 14px; display: grid; gap: 3px; align-content: start; }
+.insight.critical { border-left-color: var(--critical); }
+.insight.good { border-left-color: var(--good); }
+.insight.info { border-left-color: var(--accent); }
+.insight b { font-size: 13px; font-weight: 650; display: flex; gap: 6px; align-items: baseline; }
+.insight .ic { flex: none; width: 16px; text-align: center; }
+.insight span.d { font-size: 12px; color: var(--text-secondary); }
+.insight button { all: unset; cursor: pointer; color: var(--accent); font-size: 12px; font-weight: 650; margin-top: 3px; width: max-content; }
+.insight button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.insights-ok { color: var(--good-text); font-size: 13px; font-weight: 600; padding: 2px; }
+
+/* KPI v2 */
+.kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpis2 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.kpis2 > * { min-width: 0; }
+@media (max-width: 1280px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpis2 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .kpis { grid-template-columns: minmax(0, 1fr); } .kpis2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi .label { font-size: 11px; letter-spacing: .06em; }
+.kpi .value { font-size: 28px; }
+.kpi .vrow { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.kpi .pair { display: flex; gap: 8px 20px; flex-wrap: wrap; margin-top: 6px; }
+.kpi .pv { display: grid; gap: 1px; min-width: 0; }
+.kpi .pv .k { font-size: 12px; color: var(--text-secondary); display: inline-flex; gap: 6px; align-items: center; }
+.kpi .pv .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kpi .pv .v.na { color: var(--text-muted); }
+.kpi.sm { padding: 10px 14px; }
+.kpi.sm .value { font-size: 18px; margin-top: 2px; }
+.delta { font-size: 12px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.delta.good { color: var(--good-text); }
+.delta.bad { color: var(--critical-text); }
+.delta.flat { color: var(--text-muted); }
+
+/* skeletons */
+.sk { display: block; border-radius: 4px; height: 12px; background: linear-gradient(90deg, var(--surface-2) 0%, var(--grid) 50%, var(--surface-2) 100%); background-size: 200% 100%; animation: sk 1.2s linear infinite; }
+@keyframes sk { to { background-position: -200% 0; } }
+.sk-chart { height: 100%; border-radius: 8px; }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } html { scroll-behavior: auto; } }
+
+/* tables v2 */
+#perf tbody tr:nth-child(even), #countries tbody tr.alt { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+tbody tr:hover { background: var(--surface-2) !important; }
+td.n.hot { color: var(--critical-text); font-weight: 650; }
+.best { display: inline-flex; gap: 3px; align-items: center; font-size: 11px; font-weight: 650; color: var(--text-primary); margin-left: 6px; padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--warning) 25%, transparent); white-space: nowrap; vertical-align: 1px; }
+.share .track { width: 80px; background: var(--grid); }
+.share .fill, .stars .fill { background: var(--text-muted); opacity: .65; }
+.share .num { color: var(--text-secondary); }
+.st-text { color: var(--text-secondary); }
+tr.grp > td { border-top: 1px solid var(--border-strong); }
+.monly { display: none; }
+
+/* benchmarks v2 */
+.bench-grid.cmpg { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 24px; }
+@media (max-width: 1100px) { .bench-grid.cmpg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .bench-grid.cmpg { grid-template-columns: minmax(0, 1fr); } }
+.cmp-row { display: grid; grid-template-columns: 96px minmax(60px, 1fr) auto; align-items: center; gap: 2px 12px; padding: 0 0 8px; border-bottom: 1px solid var(--border); }
+.cmp-meta { grid-column: 1 / -1; font-size: 12px; color: var(--text-secondary); }
+.cmp-meta b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.pill { font-size: 11px; font-weight: 650; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.bad { color: var(--critical-text); background: color-mix(in srgb, var(--critical) 12%, transparent); }
+.pill.good { color: var(--good-text); background: color-mix(in srgb, var(--good) 13%, transparent); }
+.pill.mid { color: var(--text-secondary); background: var(--surface-2); }
+sup.fn a { text-decoration: none; color: var(--text-muted); font-size: 10px; margin-left: 2px; font-weight: 600; }
+sup.fn a:hover { color: var(--accent); }
+details.how { margin-top: 14px; font-size: 12px; color: var(--text-muted); }
+details.how summary { cursor: pointer; color: var(--text-secondary); font-weight: 600; }
+details.how p { margin: 6px 0 0; max-width: 900px; }
+[data-theme="dark"] .bullet .rng, :root:not([data-theme="light"]):not([data-theme="soft"]) .bullet .rng { outline: 1px solid color-mix(in srgb, var(--seq-3) 40%, transparent); }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .bullet .rng { outline: 0; } }
+
+/* Google Play v2 */
+.apps { grid-template-columns: minmax(0, 1fr); }
+.app { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px 24px; align-items: start; }
+.app .col { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.app .stars { max-width: 380px; }
+.review.low { border-left: 3px solid var(--serious); padding-left: 10px; }
+.review .meta b { color: var(--text-secondary); }
+@media (max-width: 900px) { .app { grid-template-columns: minmax(0, 1fr); } }
+
+/* mobile: ads as cards */
+@media (max-width: 640px) {
+  #perf thead { display: none; }
+  #perf, #perf tbody { display: block; }
+  #perf tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; padding: 12px 4px; border-bottom: 1px solid var(--border); }
+  #perf tbody tr:nth-child(even) { background: none; }
+  #perf td { border: 0; padding: 0; white-space: normal; }
+  #perf td.name { grid-column: 1 / -1; min-width: 0; max-width: none; }
+  #perf td[data-l] { display: grid; gap: 1px; text-align: left; font-size: 15px; font-weight: 650; }
+  #perf td[data-l]::before { content: attr(data-l); font-size: 11px; font-weight: 550; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  #perf td.mhide { display: none; }
+  #perf td.empty { grid-column: 1 / -1; }
+  .monly { display: block; font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .status .pop { left: auto; right: -60px; }
+}
+
+/* ---------- v3: pulse strip, creative lab, sparklines ---------- */
+.pulse { display: grid; grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; }
+@media (max-width: 1180px) { .pulse { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .pulse .pc-score { grid-column: 1 / -1; } }
+@media (max-width: 700px) { .pulse { grid-template-columns: minmax(0, 1fr); } }
+.pcard { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+.pcard h3 { margin: 0 0 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-secondary); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.pcard h3 .live { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 22%, transparent); }
+.score { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 16px; align-items: center; }
+.ring { position: relative; width: 100px; height: 100px; }
+.ring svg { width: 100px; height: 100px; transform: rotate(-90deg); display: block; }
+.ring .n { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; font-size: 30px; font-weight: 750; line-height: 1; font-variant-numeric: tabular-nums; }
+.ring .n small { display: block; font-size: 10px; font-weight: 700; letter-spacing: .05em; margin-top: 4px; text-transform: uppercase; }
+.subs { display: grid; gap: 8px; }
+.sub-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; font-size: 12px; color: var(--text-secondary); align-items: center; }
+.sub-row .sbar { grid-column: 1 / -1; display: block; height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+.sub-row .sbar i { display: block; height: 100%; border-radius: 3px; }
+.sub-row b { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.going { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+@media (max-width: 420px) { .going { grid-template-columns: minmax(0, 1fr); } }
+.gi { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 0 10px; align-items: center; min-width: 0; }
+.gi .ico { grid-row: span 2; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 15px; font-weight: 750; background: var(--surface-2); color: var(--text-secondary); }
+.gi .ico.good { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good-text); }
+.gi .ico.bad { background: color-mix(in srgb, var(--critical) 13%, transparent); color: var(--critical-text); }
+.gi .ico.warn { background: color-mix(in srgb, var(--warning) 24%, transparent); color: var(--serious-text); }
+.gi .ico.acc { background: var(--accent-soft); color: var(--accent); }
+.gi .val { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.gi .val .delta { margin-left: 6px; }
+.gi .lbl2 { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acts { display: grid; gap: 4px; }
+.act { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 70px minmax(0, 1fr) 14px; gap: 10px; align-items: center; padding: 6px 8px; margin: 0 -8px; border-radius: 8px; cursor: pointer; }
+.act:hover { background: var(--surface-2); }
+.act:focus-visible { outline: 2px solid var(--accent); }
+.tag2 { font-size: 10.5px; font-weight: 750; letter-spacing: .05em; text-align: center; padding: 4px 0; border-radius: 6px; white-space: nowrap; }
+.tag2.fix, .tag2.cut { background: color-mix(in srgb, var(--critical) 13%, transparent); color: var(--critical-text); }
+.tag2.scale { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good-text); }
+.tag2.refresh, .tag2.check { background: color-mix(in srgb, var(--warning) 26%, transparent); color: var(--serious-text); }
+.tag2.test, .tag2.track { background: var(--accent-soft); color: var(--text-primary); }
+.act .t { font-size: 13px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.act .t small { display: block; font-weight: 500; font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
+.act .go { color: var(--text-muted); font-size: 15px; }
+.allgood { display: grid; place-items: center; text-align: center; gap: 6px; padding: 12px 0; color: var(--good-text); font-weight: 650; }
+.allgood span { font-size: 26px; }
+
+.spark { display: block; margin-top: 6px; overflow: visible; }
+.kpi .label .i { cursor: help; color: var(--text-muted); margin-left: 4px; letter-spacing: 0; }
+
+/* creative lab */
+.lab-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: end; }
+@media (max-width: 800px) { .lab-top { grid-template-columns: minmax(0, 1fr); } }
+.splitbar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; }
+.splitbar i { display: block; height: 100%; min-width: 4px; }
+.slegend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+.slegend span { display: inline-flex; gap: 6px; align-items: center; }
+.slegend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.slegend b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.lab-ref { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.chip2 { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-secondary); background: var(--surface-2); border-radius: 999px; padding: 4px 11px; white-space: nowrap; }
+.chip2 b { color: var(--text-primary); }
+.lab-cols { position: relative; display: grid; grid-template-columns: repeat(5, minmax(210px, 1fr)); gap: 12px; margin-top: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.lcol { background: var(--surface-2); border-radius: 12px; padding: 10px; display: grid; gap: 8px; align-content: start; border-top: 3px solid var(--st); transition: box-shadow .3s; min-width: 0; }
+.lcol.flash { box-shadow: 0 0 0 2px var(--st); }
+.lcol h4 { margin: 0; font-size: 13px; display: flex; align-items: center; gap: 7px; }
+.lcol h4 .si { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; color: #fff; background: var(--st); }
+.lcol h4 .c { margin-left: auto; font-size: 12px; color: var(--text-muted); font-weight: 650; font-variant-numeric: tabular-nums; }
+.lcol .hint { font-size: 11.5px; color: var(--text-muted); margin-top: -4px; }
+.cc { position: relative; background: var(--surface-1); border: 1px solid var(--border); border-radius: 9px; padding: 8px; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 3px 10px; align-items: center; }
+.cc:hover { border-color: var(--border-strong); }
+.thumb { grid-row: span 3; align-self: start; width: 40px; height: 40px; border-radius: 9px; display: grid; place-items: center; font-size: 16px; color: var(--pc); background: color-mix(in srgb, var(--pc) 14%, var(--surface-1)); border: 1px solid color-mix(in srgb, var(--pc) 32%, transparent); }
+.cc .nm2 { font-size: 12.5px; font-weight: 650; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.cc .row2 { display: flex; gap: 4px 10px; font-size: 11.5px; color: var(--text-secondary); align-items: baseline; flex-wrap: wrap; }
+.cc .row2 b { font-size: 14px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.ipmbar { height: 4px; border-radius: 2px; background: var(--grid); overflow: hidden; }
+.ipmbar i { display: block; height: 100%; background: var(--pc); border-radius: 2px; }
+.freq { font-size: 10.5px; font-weight: 750; padding: 0 6px; border-radius: 999px; background: var(--surface-2); }
+.freq.hi { background: color-mix(in srgb, var(--warning) 28%, transparent); color: var(--serious-text); }
+.lcol details summary { font-size: 12px; color: var(--accent); cursor: pointer; font-weight: 650; list-style: none; }
+.lcol details summary::-webkit-details-marker { display: none; }
+.lcol details[open] summary { margin-bottom: 8px; }
+.rules { margin-top: 14px; display: grid; gap: 6px; font-size: 12.5px; color: var(--text-secondary); padding: 12px; border-radius: 10px; background: var(--surface-2); }
+.rules b { color: var(--text-primary); }
+.assets { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+.assets h3 { margin: 0 0 4px; font-size: 14px; }
+.assets .sub2 { font-size: 12px; color: var(--text-muted); margin: 0 0 10px; max-width: 80ch; }
+.assets td.name { min-width: 220px; }
+.rate { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--st); color: var(--text-primary); background: color-mix(in srgb, var(--st) 16%, transparent); }
+.fgrp td { font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; background: var(--surface-2); }
+.none { font-size: 12px; color: var(--text-muted); padding: 6px 2px; }
+footer details summary { cursor: pointer; }
+.play-item details summary { font-size: 12px; color: var(--accent); cursor: pointer; font-weight: 650; }
+.play-item details p { margin-top: 6px; }
+
+/* ---------- v4: brighter look ---------- */
+header.top { background: color-mix(in srgb, var(--surface-1) 90%, transparent); }
+.pcard { position: relative; overflow: hidden; }
+.pcard::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--series-meta), var(--series-google)); opacity: .85; }
+.pc-score { background: linear-gradient(180deg, color-mix(in srgb, var(--good) 6%, var(--surface-1)) 0%, var(--surface-1) 55%); }
+.kpi { position: relative; }
+.card, .pcard { border-color: var(--border); }
+.btn { background: var(--surface-1); }
+.seg { background: var(--surface-1); }
+
+/* ---------- settings view ---------- */
+#settingsView { display: none; padding: 20px 0 48px; }
+body.view-settings #settingsView { display: block; }
+body.view-settings #main, body.view-settings .filters, body.view-settings #secnav, body.view-settings footer { display: none; }
+.set-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.set-head h1 { margin: 0; font-size: 22px; font-weight: 700; }
+.set-head .sub { color: var(--text-muted); font-size: 13px; }
+.set-grid { display: grid; gap: 16px; }
+.setc-hd { display: flex; align-items: center; gap: 14px; padding: 16px 18px 0; flex-wrap: wrap; }
+.setc-hd h2 { margin: 0; font-size: 17px; }
+.setc-hd .sub { color: var(--text-muted); font-size: 12.5px; }
+.plogo { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 18px; flex: none; }
+.plogo.meta { background: var(--series-meta); }
+.plogo.google_ads { background: var(--series-google); }
+.plogo.google_play { background: linear-gradient(135deg, var(--series-meta), var(--good)); }
+.plogo.ga4 { background: linear-gradient(135deg, var(--series-google), var(--good)); }
+.spill { margin-left: auto; font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 999px; white-space: nowrap; }
+.spill.ok { color: var(--good-text); background: color-mix(in srgb, var(--good) 14%, transparent); }
+.spill.off { color: var(--text-secondary); background: var(--surface-2); }
+.setc-bd { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px 28px; padding: 14px 18px 18px; }
+@media (max-width: 900px) { .setc-bd { grid-template-columns: minmax(0, 1fr); } }
+.steps summary { cursor: pointer; font-weight: 650; font-size: 13px; color: var(--text-secondary); }
+.steps ol { margin: 10px 0 0; padding: 0; list-style: none; counter-reset: st; display: grid; gap: 10px; }
+.steps li { counter-increment: st; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; font-size: 13px; color: var(--text-secondary); line-height: 1.45; }
+.steps li::before { content: counter(st); width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--accent-soft); color: var(--accent); }
+.steps li b { color: var(--text-primary); }
+.steps li a { white-space: nowrap; }
+.setf { display: grid; gap: 12px; align-content: start; }
+.fld { display: grid; gap: 4px; }
+.fld label { font-size: 12.5px; font-weight: 650; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fld .req { color: var(--critical-text); }
+.fld .src { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--text-secondary); }
+.fld .src.saved { color: var(--good-text); background: color-mix(in srgb, var(--good) 13%, transparent); }
+.fld input[type=text], .fld input[type=password], .fld textarea { width: 100%; border: 1px solid var(--border-strong); background: var(--surface-1); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13px; color: var(--text-primary); }
+.fld textarea { min-height: 84px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+.fld input:focus-visible, .fld textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.fld input:disabled, .fld textarea:disabled { opacity: .6; }
+.fld .help { font-size: 11.5px; color: var(--text-muted); }
+.fld .filebtn { font-size: 12px; }
+.set-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--critical-text); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.set-msg { font-size: 13px; border-radius: 8px; padding: 0; }
+.set-msg.show { padding: 10px 12px; }
+.set-msg.ok { background: color-mix(in srgb, var(--good) 12%, transparent); color: var(--good-text); }
+.set-msg.err { background: color-mix(in srgb, var(--critical) 10%, transparent); color: var(--critical-text); }
+.set-msg.info { background: var(--accent-soft); color: var(--text-primary); }
+.set-msg ul { margin: 6px 0 0; padding-left: 18px; color: var(--text-secondary); }
+.sa-email { font-size: 12.5px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); overflow-wrap: anywhere; }
+.sa-email b { user-select: all; }
+.gear { font-size: 14px; }
+/* ================= design pass 2026-11-07 (UI review spec) ================= */
+.g-weak { color: var(--critical-text); }
+.bar { min-height: 48px; gap: 12px; }
+.filters { padding: 2px 0 8px; gap: 8px; }
+.seg button { padding: 5px 10px; font-size: 13px; }
+.secnav a { padding: 7px 10px; }
+#ovSec, #labCard, #perfCard, #benchCard, #countryCard, #playersCard, #playCard { scroll-margin-top: 120px; }
+@media (max-width: 1280px) { #settingsBtn .lbl { display: none; } }
+.card.flash, section.flash { box-shadow: 0 0 0 2px var(--accent); transition: box-shadow .3s; }
+.ovsec { gap: 14px; }
+.pulse { align-items: start; }
+.pc-score { align-self: stretch; display: grid; align-content: center; }
+/* players scorecard */
+.verdict { font-size: 13px; line-height: 1.5; }
+.verdict > b:first-child { font-size: 14px; font-weight: 700; }
+.verdict ul { font-size: 13px; color: var(--text-secondary); }
+.vital .label .pill { margin-left: 6px; vertical-align: 1px; }
+/* issue strip */
+.issues { min-height: 0; padding: 0; gap: 8px; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg,#000 calc(100% - 32px),transparent); mask-image: linear-gradient(90deg,#000 calc(100% - 32px),transparent); }
+.issues:empty { display: none; }
+.issues.open { flex-wrap: wrap; -webkit-mask-image: none; mask-image: none; }
+.issues .ilabel { display: inline-flex; gap: 6px; align-items: center; font-size: 11px; }
+.issues .ilabel .n { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--critical); color: #fff; font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; letter-spacing: 0; }
+.issue { height: 28px; padding: 0 10px 0 8px; font-size: 13px; font-weight: 550; max-width: 360px; }
+.issue::after { content: "›"; color: var(--text-muted); margin-left: 2px; }
+.issue.more::after { content: none; }
+.issue.more { color: var(--accent); }
+.issue.critical { background: color-mix(in srgb, var(--critical) 8%, var(--surface-1)); }
+.issue.warning { background: color-mix(in srgb, var(--warning) 12%, var(--surface-1)); }
+.issue:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* error modal */
+dialog.modal { width: min(520px, calc(100vw - 32px)); box-shadow: var(--shadow-pop); }
+dialog.modal[open] { animation: dlg .16s ease-out; }
+@keyframes dlg { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { dialog.modal[open] { animation: none; } }
+:root[data-theme="dark"] dialog.modal::backdrop { background: rgba(0,0,0,.6); }
+dialog.modal .mh { padding: 18px 20px 6px; }
+dialog.modal .mh h2 { font-weight: 650; }
+dialog.modal .msub { padding: 0 20px 12px 58px; font-size: 13px; color: var(--text-secondary); }
+dialog.modal .mb { padding: 0 20px 8px; }
+dialog.modal .eitem details code { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 6px; background: var(--surface-2); font-family: ui-monospace, Consolas, monospace; }
+dialog.modal .mf { padding: 12px 20px 16px; }
+dialog.modal .mf > :first-child { margin-right: auto; }
+@media (max-width: 640px) {
+  dialog.modal { width: 100%; max-width: none; margin: auto 0 0; border-radius: 14px 14px 0 0; border-bottom: 0; }
+  dialog.modal .mf .btn { flex: 1; justify-content: center; }
+}
+/* charts */
+.chart { height: 220px; }
+.chart .axis text { font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .gridline { stroke-dasharray: 2 4; }
+.chart .series { stroke-width: 2.25; }
+.chart .series.dash { stroke-dasharray: 5 4; stroke-width: 1.75; }
+.chart .ref { stroke-width: 1.25; stroke-dasharray: 4 4; opacity: .85; }
+.chart .reflabel { fill: var(--text-muted); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--surface-1); stroke-width: 3px; }
+.chart .pdot { stroke: var(--surface-1); stroke-width: 2; }
+.chart .vlabel { fill: var(--text-secondary); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--surface-1); stroke-width: 3px; }
+.chart .clip { fill: var(--critical-text); font-size: 9px; }
+.chart .hit { touch-action: pan-y; }
+.legend { gap: 12px; flex-wrap: wrap; }
+.legend i { width: 12px; height: 3px; }
+.tip { box-shadow: var(--shadow-pop); padding: 8px 12px; border-radius: 10px; min-width: 168px; }
+.tip .t { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.tip .r { padding: 2px 0; }
+.tip .r b { font-size: 13px; }
+.rcharts { gap: 16px 20px; }
+.rcharts .chart { height: 200px; }
+.rcharts .chead { display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 4px; }
+.rcharts .ctitle { font-size: 13px; font-weight: 650; color: var(--text-primary); margin-bottom: 2px; }
+.rcharts .ctitle small { display: block; font-size: 12px; font-weight: 400; color: var(--text-muted); }
+/* tables */
+#perfCard .table-wrap { max-height: min(70vh, 720px); overflow: auto; overscroll-behavior: contain; }
+th { background: var(--surface-1); box-shadow: inset 0 -1px var(--border-strong); font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+td.n { color: var(--text-primary); }
+#perf tbody tr:nth-child(even) { background: none; }
+/* KPI deltas */
+.delta { padding: 1px 6px; border-radius: 999px; }
+.delta.good { background: color-mix(in srgb, var(--good) 12%, transparent); }
+.delta.bad { background: color-mix(in srgb, var(--critical) 10%, transparent); }
+.kpi .label { color: var(--text-muted); font-weight: 600; }
+/* creative lab + single-app cards */
+.lab-cols { align-items: start; }
+.apps > .app:only-child { border: 0; padding: 0; }
+/* empty + loading */
+.empty { display: grid; gap: 6px; place-items: center; text-align: center; padding: 32px 16px; font-size: 13px; color: var(--text-muted); }
+.empty b { font-size: 14px; font-weight: 650; color: var(--text-secondary); }
+.chart > .empty { height: 100%; padding: 0 16px; border: 1px dashed var(--border); border-radius: 8px; }
+.sk { background-image: linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--border) 70%, var(--surface-2)), var(--surface-2)); }
+select:empty { min-width: 80px; }
+@media (min-width: 1024px) {
+  .card > .hd { padding: 16px 20px 0; }
+  .card > .bd { padding: 14px 20px 20px; }
+  .pcard { padding: 16px 20px; }
+}
+/* phones */
+@media (max-width: 640px) {
+  .bar { gap: 8px; padding: 8px 0; }
+  .brand { font-size: 14px; }
+  #settingsBtn .lbl { display: none; }
+  #settingsBtn, #theme, #refresh { min-height: 36px; }
+  #auto { padding: 4px 6px; font-size: 12px; }
+  .filters { gap: 8px; padding-bottom: 10px; }
+  .seg { -webkit-mask-image: linear-gradient(90deg,#000 calc(100% - 28px),transparent); mask-image: linear-gradient(90deg,#000 calc(100% - 28px),transparent); }
+  .seg button { min-height: 36px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+  .kpis > :first-child { grid-column: 1 / -1; }
+  .kpi { padding: 12px; }
+  .kpi .pair { gap: 4px 12px; }
+  .kpi .pv .v { font-size: 18px; }
+  .kpi .pv .spark { display: none; }
+  .kpis2 > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  #countries .plat .pn { display: none; }
+  #countries td, #countries th { padding: 8px 6px; }
+  .chart { height: 190px; }
+  .rets { grid-template-columns: repeat(5, minmax(0,1fr)); gap: 6px; }
+  .rets .vital { padding: 8px 6px; }
+  .rets .vital .value { font-size: 16px; }
+  .rets .vital .label .pill { display: none; }
+  .lab-cols { grid-template-columns: repeat(5, 82%); scroll-snap-type: x mandatory; }
+  .lcol { scroll-snap-align: start; }
+  .act .t { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .act { grid-template-columns: 56px minmax(0,1fr) 12px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="bar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 32 32"><path d="M6 24V8l10 9 10-9v16" stroke="#fff" stroke-width="4" fill="none" stroke-linejoin="round"/></svg></span>
+        Meeza Marketing
+      </div>
+      <details class="status" id="statusBox">
+        <summary id="statusSum"><span class="sdot"></span><span>Connecting…</span></summary>
+        <div class="pop"><div class="chips" id="chips" aria-live="polite"></div><a href="#settings" class="btn" style="justify-content:center">⚙ Manage connections</a><div class="muted" style="font-size:12px">Read-only · your data stays on this computer</div></div>
+      </details>
+      <div class="spacer"></div>
+      <span class="updated" id="updated"></span>
+      <label class="field" title="Automatic refresh interval">
+        <span class="sr">Auto refresh</span>
+        <select id="auto">
+          <option value="0">Auto-refresh off</option>
+          <option value="60000">Every 1 min</option>
+          <option value="300000">Every 5 min</option>
+          <option value="900000">Every 15 min</option>
+        </select>
+      </label>
+      <button class="btn primary" id="refresh" type="button"><span class="spin" aria-hidden="true"></span>Refresh</button>
+      <a class="btn" id="settingsBtn" href="#settings" title="Connections and settings"><span class="gear" aria-hidden="true">⚙</span><span class="lbl"> Settings</span></a>
+      <button class="btn" id="theme" type="button" title="Switch theme" aria-label="Switch theme">◑ Soft</button>
+    </div>
+    <div class="filters">
+      <div class="seg" id="presets" role="group" aria-label="Date range">
+        <button data-p="today" title="Today so far: numbers keep changing during the day">Today</button>
+        <button data-p="yesterday">Yesterday</button>
+        <button data-p="last_7_days">7 days</button>
+        <button data-p="last_14_days">14 days</button>
+        <button data-p="last_30_days">30 days</button>
+        <button data-p="last_90_days">90 days</button>
+        <button data-p="this_month">This month</button>
+        <button data-p="last_month">Last month</button>
+        <button data-p="custom">Custom</button>
+      </div>
+      <span id="customDates" hidden>
+        <input type="date" id="start" aria-label="Start date"> – <input type="date" id="end" aria-label="End date">
+        <button class="btn" id="applyDates" type="button">Apply</button>
+      </span>
+      <div class="seg" id="platforms" role="group" aria-label="Platform">
+        <button data-v="all">All platforms</button>
+        <button data-v="meta">Meta</button>
+        <button data-v="google_ads">Google Ads</button>
+      </div>
+      <label class="field" id="currencyField" hidden>Currency <select id="currency"></select></label>
+      <span class="updated" id="rangeText"></span>
+    </div>
+    <nav class="secnav" id="secnav" aria-label="Sections">
+      <a href="#ovSec">Overview</a><a href="#labCard">Creative lab</a><a href="#perfCard">Performance</a><a href="#benchCard">Benchmarks</a><a href="#countryCard">Countries</a><a href="#playersCard">Players</a><a href="#playCard">Google Play</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <main id="main">
+    <div class="issues" id="issues" role="region" aria-label="Issues" aria-live="polite"></div>
+    <div id="banners" style="display:grid;gap:8px"></div>
+
+    <section id="ovSec" class="ovsec" aria-label="Overview">
+      <div class="kpis" id="kpis" aria-label="Key metrics"></div>
+      <div class="kpis2" id="kpis2" aria-label="Delivery metrics"></div>
+      <div class="pulse" id="pulse" aria-live="polite"></div>
+    </section>
+
+    <div class="grid-3">
+      <section class="card">
+        <div class="hd"><h2>Spend per day</h2><span class="sub" id="spendSub"></span><div class="spacer"></div><div class="legend" id="legendSpend"></div></div>
+        <div class="bd"><div class="chart" id="chartSpend"></div><details class="tbl"><summary>Show as table</summary><div id="tblSpend"></div></details></div>
+      </section>
+      <section class="card">
+        <div class="hd"><h2>Attributed installs per day</h2><span class="sub">each platform's own attribution</span><div class="spacer"></div><div class="legend" id="legendInstalls"></div></div>
+        <div class="bd"><div class="chart" id="chartInstalls"></div><details class="tbl"><summary>Show as table</summary><div id="tblInstalls"></div></details></div>
+      </section>
+      <section class="card">
+        <div class="hd"><h2>CPI per day</h2><span class="sub" id="cpiSub">spend ÷ attributed installs</span><div class="spacer"></div><div class="legend" id="legendCpi"></div></div>
+        <div class="bd"><div class="chart" id="chartCpi"></div><details class="tbl"><summary>Show as table</summary><div id="tblCpi"></div></details></div>
+      </section>
+    </div>
+
+    <section class="card" id="labCard">
+      <div class="hd"><h2>Creative testing lab</h2><span class="sub">test small → scale winners → cut losers → refresh tired ads</span>
+        <div class="tools"><button class="btn" id="labRules" type="button" aria-expanded="false">How ads are sorted</button></div></div>
+      <div class="bd" id="lab"></div>
+    </section>
+
+    <section class="card" id="perfCard">
+      <div class="hd">
+        <h2 id="perfTitle">Performance by ad</h2>
+        <div class="seg" id="levels" role="group" aria-label="Level">
+          <button data-l="ad">Ads</button>
+          <button data-l="adset">Ad sets · Ad groups</button>
+          <button data-l="campaign">Campaigns</button>
+        </div>
+        <div class="tools">
+          <input type="search" id="search" placeholder="Search name or ID…" aria-label="Search">
+          <select id="statusFilter" aria-label="Status filter">
+            <option value="all">All statuses</option>
+            <option value="active">Active only</option>
+            <option value="paused">Paused / stopped</option>
+          </select>
+          <label class="field"><input type="checkbox" id="noInstalls"> Spending without installs</label>
+          <button class="btn" id="csv" type="button">Export CSV</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="table-wrap"><table id="perf"><thead></thead><tbody></tbody></table></div>
+        <div class="more" id="perfMore"></div>
+      </div>
+    </section>
+
+    <section class="card" id="benchCard">
+      <div class="hd">
+        <h2>How you compare with the industry</h2>
+        <span class="sub" id="benchSub">published mobile-game benchmarks</span>
+        <div class="tools">
+          <label class="field">Genre <select id="benchGenre"></select></label>
+          <label class="field">OS <select id="benchOs"><option value="all">All</option><option value="android">Android</option><option value="ios">iOS</option></select></label>
+        </div>
+      </div>
+      <div class="bd" id="bench"><div class="empty">Loading…</div></div>
+    </section>
+
+    <section class="card" id="countryCard">
+      <div class="hd"><h2>Countries</h2><span class="sub">Meta: delivery country · Google Ads: user location</span>
+        <div class="tools"><input type="search" id="countrySearch" placeholder="Filter countries…" aria-label="Filter countries"></div></div>
+      <div class="bd"><div class="table-wrap"><table id="countries"><thead></thead><tbody></tbody></table></div><div class="more" id="countryMore"></div></div>
+    </section>
+
+    <section class="card" id="playersCard">
+      <div class="hd"><h2>Players</h2><span class="sub">Google Analytics 4 / Firebase · active users, retention and "can this game work?"</span></div>
+      <div class="bd" id="players"></div>
+    </section>
+
+    <section class="card" id="playCard">
+      <div class="hd"><h2>Google Play</h2><span class="sub" id="playSub">Android vitals, reviews and store installs</span></div>
+      <div class="bd" id="play"></div>
+    </section>
+  </main>
+
+  <section id="settingsView" aria-label="Settings">
+    <div class="set-head">
+      <a class="btn" href="#ovSec">← Dashboard</a>
+      <h1>Connections</h1>
+      <span class="sub">Connect your accounts step by step. Everything is stored encrypted on this computer and only read access is used.</span>
+    </div>
+    <div id="setBanner" style="display:grid;gap:8px;margin-bottom:16px"></div>
+    <div class="set-grid" id="setCards"><div class="card"><div class="empty">Loading…</div></div></div>
+  </section>
+
+  <footer>
+    <details><summary><b>About these numbers</b></summary>
+    <ul id="notes">
+      <li>Amounts stay in each account's own currency and are never converted. Totals are shown for one currency at a time.</li>
+      <li>Installs are attributed by each ad platform's own model. Meta and Google Ads can both claim the same install, so their installs are shown side by side and never added together.</li>
+      <li>"—" means the metric is not available (for example, no install tracking), not zero.</li>
+      <li>Data is cached for 3 minutes; <b>Refresh</b> fetches fresh data. Today's numbers are incomplete on every platform.</li>
+    </ul></details>
+  </footer>
+</div>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<dialog class="modal" id="errDlg" aria-labelledby="errTitle">
+  <div class="mh"><span class="ico" aria-hidden="true">!</span><h2 id="errTitle">Some data could not be loaded</h2></div>
+  <div class="msub" id="errSub"></div>
+  <div class="mb" id="errBody"></div>
+  <div class="mf">
+    <a class="btn" href="#settings" id="errSettings">⚙ Open Settings</a>
+    <button class="btn" type="button" id="errRetry">Retry</button>
+    <button class="btn primary" type="button" id="errClose">Close</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+(() => {
+  // ------------------------------------------------------------------ state
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("meeza." + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("meeza." + k, JSON.stringify(v)); } catch { } },
+  };
+  const PLATFORM = { meta: "Meta", google_ads: "Google Ads", google_play: "Google Play" };
+  const SERIES_VAR = { meta: "--series-meta", google_ads: "--series-google" };
+  const PAGE = 50;
+  const ORDER = { meta: 0, google_ads: 1 };
+  const byPlatform = (a, b) => (ORDER[a.platform ?? a] ?? 9) - (ORDER[b.platform ?? b] ?? 9);
+
+  const state = {
+    preset: store.get("preset", "last_7_days"),
+    start: "", end: "",
+    level: store.get("level", "ad"),
+    platform: store.get("platform", "all"),
+    currency: null,
+    search: "", status: "all", noInstalls: false,
+    sort: { key: "spend", dir: -1 },
+    shown: PAGE, countryShown: 25, countrySearch: "",
+    auto: store.get("auto", 300000),
+    overview: null, countries: null, play: null, bench: null, creatives: null, labRules: false,
+    benchTab: store.get("benchTab", "you"), benchGenre: store.get("benchGenre", "all"), benchOs: store.get("benchOs", "all"),
+    loading: 0,
+  };
+
+  // ------------------------------------------------------------------ helpers
+  const $ = (s, el = document) => el.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const color = (p) => css(SERIES_VAR[p] || "--text-muted");
+  const nf0 = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+  const nf2 = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const nf1 = new Intl.NumberFormat(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const compact = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 });
+  const NA = '<span class="muted" title="Not available">—</span>';
+  const isNum = (v) => typeof v === "number" && isFinite(v);
+  const int = (v) => isNum(v) ? nf0.format(v) : NA;
+  const pct = (v) => isNum(v) ? nf2.format(v) + "%" : NA;
+  const big = (v) => isNum(v) ? (Math.abs(v) >= 100000 ? compact.format(v) : nf0.format(v)) : NA;
+  const fmtCache = {};
+  /** yyyy-MM-dd in the viewer's own time zone (toISOString would use UTC). */
+  const localIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  function money(v, cur, opts = {}) {
+    if (!isNum(v)) return opts.raw ? "—" : NA;
+    const key = cur + (opts.compact ? "c" : "");
+    try {
+      fmtCache[key] ??= new Intl.NumberFormat(undefined, { style: "currency", currency: cur, notation: opts.compact ? "compact" : "standard", maximumFractionDigits: opts.compact ? 1 : 2 });
+      return fmtCache[key].format(v);
+    } catch { return `${cur} ${nf2.format(v)}`; }
+  }
+  function prettyRange(r) {
+    const [a, b] = String(r).split("..");
+    if (!a || !b) return r;
+    const da = new Date(a + "T00:00:00"), db = new Date(b + "T00:00:00");
+    const md = { month: "short", day: "numeric" };
+    if (a === b) return da.toLocaleDateString(undefined, md);
+    const sameMonth = da.getMonth() === db.getMonth() && da.getFullYear() === db.getFullYear();
+    return `${da.toLocaleDateString(undefined, md)} – ${sameMonth ? db.getDate() : db.toLocaleDateString(undefined, md)}`;
+  }
+  const dateLabel = (iso) => { const d = new Date(iso + "T00:00:00"); return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
+
+  function statusClass(s) {
+    const u = (s || "").toUpperCase();
+    if (u === "ACTIVE" || u === "ENABLED") return "active";
+    if (u.includes("PAUSED") || u === "ARCHIVED" || u === "REMOVED" || u === "DELETED") return "paused";
+    return "";
+  }
+  const statusLabel = (s) => s ? s.replace(/_/g, " ").toLowerCase().replace(/^\w/, c => c.toUpperCase()) : "—";
+
+  function query(extra = {}) {
+    const p = new URLSearchParams();
+    if (state.preset === "custom") { p.set("start", state.start); p.set("end", state.end); }
+    else p.set("preset", state.preset);
+    if (state.platform !== "all") p.set("platforms", state.platform);
+    for (const [k, v] of Object.entries(extra)) p.set(k, v);
+    return p.toString();
+  }
+
+  async function api(path, refresh) {
+    const res = await fetch(`/api/${path}&${refresh ? "refresh=1" : ""}`, { credentials: "same-origin" });
+    if (res.status === 401) { location.reload(); throw new Error("unauthorized"); }
+    return res.json();
+  }
+
+  // ------------------------------------------------------------------ loading
+  let loadSeq = 0;
+  async function loadAll(refresh = false) {
+    const seq = ++loadSeq;
+    setLoading(1);
+    const ov = api(`overview?${query({ level: state.level })}`, refresh).then(d => {
+      if (seq !== loadSeq) return;
+      // A remembered platform filter can point at a platform that isn't connected: fall back to all.
+      if (state.platform !== "all" && !d.ok && (d.errors || []).some(e => /No requested ad platform is configured/i.test(e.message))) {
+        state.platform = "all"; store.set("platform", "all"); syncControls(); loadAll(refresh); return;
+      }
+      state.overview = d; renderOverview(); renderBench();
+    });
+    const co = api(`countries?${query()}`, refresh).then(d => { if (seq === loadSeq) { state.countries = d; renderCountries(); renderInsights(); if (state.benchTab === "country") renderBench(); } });
+    const pl = api(`play?${query()}`, refresh).then(d => { if (seq === loadSeq) { state.play = d; renderPlay(); } });
+    const py = api(`players?${query()}`, refresh).then(d => { if (seq === loadSeq) { state.players = d; renderPlayers(); renderChips(); } });
+    const cr = api(`creatives?${query()}`, refresh).then(d => { if (seq === loadSeq) { state.creatives = d; renderLab(); renderInsights(); } });
+    const results = await Promise.allSettled([ov, co, pl, cr, py]);
+    if (seq !== loadSeq) return;
+    setLoading(-1);
+    const failed = results.filter(r => r.status === "rejected");
+    if (failed.length) showBanner([`Could not reach the local server: ${esc(failed[0].reason?.message || failed[0].reason)}`]);
+    $("#updated").textContent = "Updated " + new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    renderBanners();
+  }
+
+  async function loadLevel() {
+    setLoading(1);
+    try {
+      state.overview = await api(`overview?${query({ level: state.level })}`, false);
+      renderOverview(); renderBanners(); renderBench();
+    } finally { setLoading(-1); }
+  }
+
+  function setLoading(d) {
+    state.loading = Math.max(0, state.loading + d);
+    document.body.classList.toggle("loading", state.loading > 0);
+    for (const id of ["kpis", "perfCard"]) document.getElementById(id).classList.toggle("dim", state.loading > 0 && !!state.overview);
+  }
+
+  // ------------------------------------------------------------------ banners & chips
+  function showBanner(lines) {
+    openErrors([{ platform: "server", message: lines.join(" ") }], true);
+  }
+
+  // ------------------------------------------------------------------ errors popup
+  /* Expected notices (e.g. "Today" has no complete GA4 day yet) never pop up. */
+  const BENIGN = /no complete days yet/i;
+  const ERR_NAME = { ...PLATFORM, ga4: "Google Analytics", server: "Local server" };
+  const cleanMsg = (m) => String(m).replace(/\(fbtrace_id[^)]*\)/g, "").replace(/The current time is[^.]*\./i, "");
+  function errorFix(msg) {
+    if (/190|expired|invalid.?token|access token|invalid_grant|unauthori[sz]ed|401/i.test(msg)) return "The access token has expired or was revoked. Create a new one (a Meta System User token never expires), paste it in Settings and press Save.";
+    if (/403|permission|not have access|PERMISSION_DENIED|forbidden/i.test(msg)) return "The connected account can't read this data. Give the service account or user read access, then use Test connection in Settings.";
+    if (/not configured|not connected|No requested ad platform/i.test(msg)) return "This platform isn't connected yet. Connect it step by step in Settings.";
+    if (/quota|rate limit|429|too many/i.test(msg)) return "The platform's rate limit was hit. Wait a few minutes and press Retry.";
+    if (/fetch|network|timed? ?out|reach|ECONN|503|502|500/i.test(msg)) return "A network or server problem. Check your internet connection and press Retry.";
+    return "Check this connection in Settings and press Retry. The full message is below.";
+  }
+  function collectErrors() {
+    const out = [], seen = new Set();
+    for (const r of [state.overview, state.countries, state.play, state.players, state.creatives]) for (const e of r?.errors || []) {
+      if (BENIGN.test(e.message)) continue;
+      const key = e.platform + "|" + cleanMsg(e.message);
+      if (seen.has(key)) continue;
+      seen.add(key); out.push(e);
+    }
+    return out;
+  }
+  const errShort = (m) => /190|expired|access token|invalid_grant/i.test(m) ? "access token expired" : /403|permission|forbidden/i.test(m) ? "no access" : /quota|429|rate limit/i.test(m) ? "rate limited" : "couldn't load data";
+  const errSig = (errs) => errs.map(e => e.platform + ":" + cleanMsg(e.message).slice(0, 140)).sort().join("|");
+  function openErrors(errs, force) {
+    if (!errs.length) return;
+    const sig = errSig(errs);
+    let dismissed = null;
+    try { dismissed = sessionStorage.getItem("meeza.errSig"); } catch { }
+    const dlg = $("#errDlg");
+    if (dlg.open || (!force && dismissed === sig)) return;
+    $("#errTitle").textContent = errs.length === 1 ? `${ERR_NAME[errs[0].platform] || errs[0].platform} data could not be loaded` : `${errs.length} problems loading data`;
+    $("#errBody").innerHTML = errs.map(e => `<div class="eitem"><div class="ep">${esc(ERR_NAME[e.platform] || e.platform)} · ${esc(errShort(e.message))}</div><div class="fix">${esc(errorFix(e.message))}</div><details><summary>Technical details</summary><code>${esc(e.message)}</code></details></div>`).join("")
+      + `<div class="muted" style="font-size:12px;margin:2px 0 6px">This popup won't reopen for the same problem in this tab. It stays in the Issues strip at the top.</div>`;
+    const needsSettings = errs.some(e => /190|expired|token|invalid_grant|unauthori[sz]ed|401|403|permission|not configured|not connected/i.test(e.message));
+    $("#errSettings").hidden = errs.every(e => e.platform === "server");
+    $("#errSettings").classList.toggle("primary", needsSettings);
+    $("#errRetry").classList.toggle("primary", !needsSettings);
+    $("#errClose").classList.remove("primary");
+    const sources = new Set(errs.map(e => e.platform)).size;
+    $("#errSub").textContent = `${sources} source${sources > 1 ? "s" : ""} failed. Everything else on the dashboard is up to date.`;
+    dlg.dataset.sig = sig;
+    if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+    (needsSettings && !$("#errSettings").hidden ? $("#errSettings") : $("#errRetry")).focus();
+  }
+  const rememberDismiss = () => { try { sessionStorage.setItem("meeza.errSig", $("#errDlg").dataset.sig || ""); } catch { } };
+  function closeErrors() {
+    rememberDismiss();
+    const dlg = $("#errDlg");
+    if (dlg.open) dlg.close();
+  }
+  $("#errClose").addEventListener("click", closeErrors);
+  $("#errSettings").addEventListener("click", closeErrors);
+  $("#errRetry").addEventListener("click", () => { closeErrors(); loadAll(true); });
+  $("#errDlg").addEventListener("cancel", rememberDismiss);
+  $("#errDlg").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeErrors(); });
+
+  // ------------------------------------------------------------------ issues strip
+  function issues() {
+    const out = [];
+    for (const e of collectErrors()) {
+      out.push({ sev: "critical", t: `${ERR_NAME[e.platform] || e.platform}: ${errShort(e.message)}`, d: cleanMsg(e.message), act: "errors" });
+    }
+    for (const p of state.players?.data?.properties || []) {
+      const d1 = (p.retention || []).find(x => x.day === 1), sc = p.scorecard || {};
+      const g = (sc.retention || []).find(x => x.metric === "D1");
+      if (isNum(d1?.percent) && g && g.grade === "weak")
+        out.push({ sev: "warning", t: `D1 retention ${nf1.format(d1.percent)}% is weak`, d: `${p.displayName || p.propertyId}: Day 1 retention ${nf1.format(d1.percent)}%, aim for 25%+. ${sc.headline || ""}`, act: "players" });
+    }
+    if (state.overview && state.creatives) {
+      try {
+        for (const i of improvements().filter(i => i.tag === "fix"))
+          out.push({ sev: "critical", t: i.t.replace(/ vs Google's [0-9.]+% limit/, " over limit"), d: `${i.t}. ${i.d}`, act: i.act });
+      } catch { }
+    }
+    const rank = { critical: 0, warning: 1 };
+    return out.sort((a, b) => rank[a.sev] - rank[b.sev]);
+  }
+  let issuesOpen = false;
+  function renderIssues() {
+    const el = $("#issues");
+    if (!el) return;
+    const list = issues();
+    const anyLoaded = state.overview || state.players || state.play;
+    if (!list.length || !anyLoaded) { el.innerHTML = ""; el.classList.remove("open"); return; }
+    const MAX = 4, shown = issuesOpen ? list : list.slice(0, MAX);
+    el.classList.toggle("open", issuesOpen);
+    el.innerHTML = `<span class="ilabel">Issues <span class="n">${list.length}</span></span>`
+      + shown.map((x, k) => `<button type="button" class="issue ${x.sev}" data-k="${k}" title="${esc(x.d || "")}"><i aria-hidden="true"></i><span class="t">${esc(x.t)}</span></button>`).join("")
+      + (list.length > MAX ? `<button type="button" class="issue more" data-more="1">${issuesOpen ? "Show less" : `+${list.length - MAX} more`}</button>` : "");
+    el.onclick = (e) => {
+      if (e.target.closest("[data-more]")) { issuesOpen = !issuesOpen; renderIssues(); return; }
+      const b = e.target.closest("[data-k]"); if (!b) return;
+      const it = list[+b.dataset.k];
+      if (it.act === "errors") openErrors(collectErrors(), true);
+      else if (it.act === "players") flashTo($("#playersCard"));
+      else runAct(it.act);
+    };
+  }
+
+  function renderBanners() {
+    const b = $("#banners");
+    b.innerHTML = "";
+    if (state.overview?.data?.demo) {
+      const el = document.createElement("div");
+      el.className = "banner info";
+      el.innerHTML = `<span aria-hidden="true">ℹ</span><div><b>Demo data</b> · sample numbers, not your accounts · <a href="#settings">Connect your accounts →</a></div>`;
+      b.append(el);
+    }
+    openErrors(collectErrors());
+    const platforms = state.overview?.data?.platforms || [];
+    const off = platforms.filter(p => !p.configured);
+    const playOff = state.play?.data && state.play.data.configured === false;
+    if (platforms.length && off.length === platforms.length && playOff) {
+      const el = document.createElement("div");
+      el.className = "banner info";
+      el.innerHTML = `<span aria-hidden="true">ℹ</span><div><b>No platforms are connected yet.</b> <a href="#settings">Open Settings to connect them step by step →</a><ul>${off.map(p => `<li>${esc(PLATFORM[p.platform])}: ${esc(p.hint)}</li>`).join("")}<li>Google Play: ${esc(state.play.data.hint)}</li></ul></div>`;
+      b.append(el);
+    }
+    renderChips();
+    renderIssues();
+  }
+
+  function renderChips() {
+    const chips = [];
+    const errs = new Set();
+    let total = 0, ok = 0, bad = 0;
+    for (const r of [state.overview, state.countries, state.play, state.players]) for (const e of r?.errors || []) errs.add(e.platform);
+    const add = (name, configured, err, hint) => {
+      total++;
+      const cls = !configured ? "off" : err ? "err" : "ok";
+      if (cls === "ok") ok++; if (cls === "err") bad++;
+      chips.push(`<span class="chip ${cls}" title="${esc(hint || "")}"><span class="dot"></span>${esc(name)} · ${!configured ? "not connected" : err ? "error" : "connected"}</span>`);
+    };
+    for (const p of state.overview?.data?.platforms || []) add(PLATFORM[p.platform], p.configured, errs.has(p.platform), p.hint);
+    if (state.play?.data) add("Google Play", state.play.data.configured, errs.has("google_play"), state.play.data.hint);
+    if (state.players?.data) add("Analytics", state.players.data.configured, errs.has("ga4"), state.players.data.hint);
+    $("#chips").innerHTML = chips.join("");
+    if (!total) return;
+    const box = $("#statusBox");
+    box.classList.remove("ok", "warn", "err");
+    const demo = !!state.overview?.data?.demo;
+    box.classList.add(demo ? "warn" : bad ? "err" : ok === total ? "ok" : "warn");
+    const label = demo ? "Demo data · nothing connected" : bad ? `${bad} connection error${bad > 1 ? "s" : ""}` : ok === total ? "All connected" : `${ok} of ${total} connected`;
+    $("#statusSum").innerHTML = `<span class="sdot" aria-hidden="true"></span><span>${esc(label)}</span>`;
+  }
+
+  // ------------------------------------------------------------------ overview
+  function currencies() {
+    const totals = state.overview?.data?.totals || [];
+    const by = {};
+    for (const t of totals) by[t.currency] = (by[t.currency] || 0) + (t.spend || 0);
+    return Object.entries(by).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+  }
+
+  function renderOverview() {
+    const curs = currencies();
+    if (!curs.includes(state.currency)) state.currency = curs[0] || null;
+    const sel = $("#currency");
+    sel.innerHTML = curs.map(c => `<option ${c === state.currency ? "selected" : ""}>${esc(c)}</option>`).join("");
+    $("#currencyField").hidden = curs.length < 2;
+    renderKpis();
+    renderInsights();
+    renderTrends();
+    renderTable();
+    const d = state.overview?.data;
+    const endIso = (state.overview?.dateRange || "").split("..")[1];
+    const noToday = endIso && endIso < localIso(new Date());
+    $("#rangeText").textContent = state.overview?.dateRange ? `${prettyRange(state.overview.dateRange)}${d?.previousRange ? `  vs  ${prettyRange(d.previousRange)}` : ""}${noToday ? "  ·  today not included" : ""}` : "";
+    $("#rangeText").title = noToday ? "Ad platforms are still counting today. Click Today or This month to include it." : "";
+  }
+
+  // Period-over-period change. goodWhenUp: true / false / null (neutral, e.g. spend).
+  function delta(cur, prev, goodWhenUp, fmt) {
+    if (!isNum(cur) || !isNum(prev) || prev === 0) return "";
+    const d = (cur - prev) / Math.abs(prev) * 100;
+    const title = `Previous period: ${fmt ? fmt(prev) : nf2.format(prev)}${state.overview?.data?.previousRange ? ` (${state.overview.data.previousRange})` : ""}`;
+    if (Math.abs(d) < 0.5) return `<span class="delta flat" title="${esc(title)}">→ 0%</span>`;
+    const cls = goodWhenUp === null ? "flat" : (d > 0) === goodWhenUp ? "good" : "bad";
+    const txt = Math.abs(d) >= 1000 ? compact.format(Math.abs(d)) : nf0.format(Math.abs(d));
+    return `<span class="delta ${cls}" title="${esc(title)}">${d > 0 ? "▲" : "▼"} ${txt}%</span>`;
+  }
+
+  const ipmOf = (t) => t && t.impressions > 0 && isNum(t.installs) ? t.installs / t.impressions * 1000 : null;
+
+  function spark(vals, color, w = 96, h = 24) {
+    const v = vals.filter(isNum);
+    if (v.length < 2) return "";
+    const max = Math.max(...v), min = Math.min(...v), span = max - min || 1;
+    let d = "", pen = false;
+    vals.forEach((p, i) => { if (!isNum(p)) { pen = false; return; } d += `${pen ? "L" : "M"}${(i / (vals.length - 1) * w).toFixed(1)},${(h - 2 - (p - min) / span * (h - 4)).toFixed(1)}`; pen = true; });
+    const last = vals.length - 1, ly = isNum(vals[last]) ? h - 2 - (vals[last] - min) / span * (h - 4) : null;
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>${ly !== null ? `<circle cx="${w}" cy="${ly.toFixed(1)}" r="2.2" fill="${color}"/>` : ""}</svg>`;
+  }
+
+  /** Daily values for the selected currency; platform null = all platforms combined. */
+  function dailyVals(platform, fn) {
+    const by = {};
+    for (const d of state.overview?.data?.daily || []) {
+      if (d.currency !== state.currency || (platform && d.platform !== platform)) continue;
+      const b = (by[d.date] ??= { spend: 0, impressions: 0, clicks: 0, installs: null });
+      b.spend += d.spend || 0; b.impressions += d.impressions || 0; b.clicks += d.clicks || 0;
+      if (isNum(d.installs)) b.installs = (b.installs ?? 0) + d.installs;
+    }
+    return Object.keys(by).sort().map(k => fn(by[k]));
+  }
+  const DAILY = {
+    spend: (b) => b.spend,
+    installs: (b) => b.installs,
+    cpi: (b) => b.installs > 0 ? b.spend / b.installs : null,
+    ipm: (b) => b.impressions > 0 && isNum(b.installs) ? b.installs / b.impressions * 1000 : null,
+  };
+
+  function renderKpis() {
+    const el = $("#kpis"), el2 = $("#kpis2");
+    if (!state.overview) {
+      const sk = (sm) => `<div class="card kpi ${sm ? "sm" : ""}"><span class="sk" style="width:40%;height:10px"></span><span class="sk" style="width:65%;height:${sm ? 18 : 26}px;margin-top:10px"></span></div>`;
+      el.innerHTML = sk().repeat(4); el2.innerHTML = sk(true).repeat(5); return;
+    }
+    const totals = (state.overview.data?.totals || []).filter(t => t.currency === state.currency).sort(byPlatform);
+    const prevAll = (state.overview.data?.previousTotals || []).filter(t => t.currency === state.currency);
+    const prevOf = (p) => prevAll.find(t => t.platform === p);
+    if (!totals.length) { el.innerHTML = `<div class="card kpi" style="grid-column:1/-1"><div class="empty">No ad delivery in this period. Try a longer date range.</div></div>`; el2.innerHTML = ""; return; }
+    const sumOf = (list, k) => list.reduce((a, t) => isNum(t[k]) ? (a ?? 0) + t[k] : a, null);
+    const agg = (list) => {
+      const spend = sumOf(list, "spend"), impr = sumOf(list, "impressions"), clicks = sumOf(list, "clicks");
+      return { spend, impr, clicks, ctr: isNum(clicks) && impr > 0 ? clicks / impr * 100 : null, cpc: isNum(spend) && clicks > 0 ? spend / clicks : null, cpm: isNum(spend) && impr > 0 ? spend / impr * 1000 : null };
+    };
+    const now = agg(totals), prev = prevAll.length ? agg(prevAll) : {};
+    const cur = state.currency;
+    const m = (v) => money(v, cur, { raw: true });
+    const lbl = (t, tip) => `<div class="label">${esc(t)}${tip ? `<span class="i" title="${esc(tip)}">ⓘ</span>` : ""}</div>`;
+    const pair = (fmt, key, goodUp, dfmt) => `<div class="pair">${totals.map(t => {
+      const v = key === "ipm" ? ipmOf(t) : t[key];
+      const pv = key === "ipm" ? ipmOf(prevOf(t.platform)) : prevOf(t.platform)?.[key];
+      return `<div class="pv"><span class="k"><i class="sw ${esc(t.platform)}"></i>${esc(PLATFORM[t.platform])}</span><span class="v ${isNum(v) ? "" : "na"}">${fmt(v)}</span>${delta(v, pv, goodUp, dfmt)}${spark(dailyVals(t.platform, DAILY[key]), color(t.platform), 84, 22)}</div>`;
+    }).join("")}</div>`;
+    el.innerHTML = [
+      `<div class="card kpi">${lbl("Spend")}<div class="vrow"><div class="value num">${money(now.spend, cur)}</div>${delta(now.spend, prev.spend, null, m)}</div>${spark(dailyVals(null, DAILY.spend), css("--text-secondary"), 180, 26)}<div class="split">${totals.map(t => `<div><span class="k"><i class="sw ${esc(t.platform)}"></i>${esc(PLATFORM[t.platform])}</span><span class="num">${money(t.spend, cur)}</span></div>`).join("")}</div></div>`,
+      `<div class="card kpi">${lbl("Installs", "Each platform's own attribution. Meta and Google can claim the same install, so they're never added together.")}${pair(int, "installs", true, (v) => nf0.format(v))}</div>`,
+      `<div class="card kpi">${lbl("CPI", "Cost per install: spend ÷ that platform's installs. Lower is better.")}${pair((v) => money(v, cur), "cpi", false, m)}</div>`,
+      `<div class="card kpi">${lbl("IPM", "Installs per 1,000 impressions: how well ads turn views into installs. Higher is better.")}${pair((v) => isNum(v) ? nf2.format(v) : NA, "ipm", true, (v) => nf2.format(v))}</div>`,
+    ].join("");
+    const small = (label, value, d, title) => `<div class="card kpi sm" title="${esc(title)}"><div class="label">${esc(label)}</div><div class="vrow"><div class="value num">${value}</div>${d}</div></div>`;
+    const per = (fn) => totals.map(t => `${PLATFORM[t.platform]}: ${fn(t)}`).join(" · ");
+    el2.innerHTML = [
+      small("CTR", pct(now.ctr), delta(now.ctr, prev.ctr, true, (v) => nf2.format(v) + "%"), per(t => isNum(t.ctr) ? nf2.format(t.ctr) + "%" : "—")),
+      small("CPC", money(now.cpc, cur), delta(now.cpc, prev.cpc, false, m), per(t => m(t.cpc))),
+      small("CPM", money(now.cpm, cur), delta(now.cpm, prev.cpm, false, m), per(t => m(t.cpm))),
+      small("Impressions", big(now.impr), delta(now.impr, prev.impr, true, (v) => nf0.format(v)), per(t => isNum(t.impressions) ? nf0.format(t.impressions) : "—")),
+      small("Clicks", big(now.clicks), delta(now.clicks, prev.clicks, true, (v) => nf0.format(v)), per(t => isNum(t.clicks) ? nf0.format(t.clicks) : "—")),
+    ].join("");
+  }
+
+  // ------------------------------------------------------------------ insights (what needs attention)
+  function median(vals) { const v = vals.filter(isNum).sort((a, b) => a - b); if (!v.length) return null; const h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; }
+
+  const STAGES = [
+    { k: "testing", name: "Testing", icon: "⚗", color: "--text-muted", hint: "Not enough data yet" },
+    { k: "scale", name: "Scale", icon: "▲", color: "--good", hint: "Winners: move budget here" },
+    { k: "steady", name: "Steady", icon: "■", color: "--text-secondary", hint: "Keep, and test challengers" },
+    { k: "refresh", name: "Refresh", icon: "↻", color: "--warning", hint: "Audience is tiring of it" },
+    { k: "cut", name: "Cut", icon: "✕", color: "--critical", hint: "Pause and reuse the budget" },
+  ];
+  const FORMAT_ICON = { video: "▶", playable: "◆", ugc: "☺", static: "▣", other: "●" };
+  const FORMAT_NAME = { video: "Video", playable: "Playable", ugc: "Creator (UGC)", static: "Static", other: "Other" };
+
+  function labBoard() {
+    const boards = state.creatives?.data?.boards || [];
+    return boards.find(b => b.currency === state.currency) || boards[0] || null;
+  }
+
+  /** Transparent, rule-based checklist score (0–100) per area; areas without data are left out. */
+  function healthScore() {
+    const parts = [];
+    const b = labBoard();
+    if (b) {
+      const st = Object.fromEntries(b.stages.map(x => [x.stage, x]));
+      const judged = ["scale", "steady", "refresh", "cut"].reduce((a, k) => a + (st[k]?.spend || 0), 0);
+      if (judged > 0) parts.push({ name: "Spend efficiency", v: Math.round(100 - (st.cut?.spend || 0) / judged * 100), tip: "Share of judged spend that is not on ads in the Cut column." });
+      const as = b.assetStages || {};
+      const winners = (st.scale?.count || 0) + (as.scale || 0), tests = (st.testing?.count || 0) + (as.testing || 0), tired = (st.refresh?.count || 0) + (as.cut || 0);
+      parts.push({ name: "Creative pipeline", v: Math.max(0, (winners ? 40 : 0) + Math.min(30, tests * 10) + Math.max(0, 30 - tired * 10)), tip: "40 for at least one winning ad or Best-rated asset, up to 30 for 3+ ads or assets in testing, 30 minus 10 per ad that needs a refresh or Low-rated asset." });
+      const total = b.stages.reduce((a, x) => a + x.spend, 0);
+      if (total > 0) parts.push({ name: "Install tracking", v: Math.round(100 - (st.untracked?.spend || 0) / total * 100), tip: "Share of spend on ads that report installs." });
+    }
+    const apps = state.play?.data?.apps || [];
+    if (apps.length) {
+      const th = state.play.data.thresholds || {};
+      const a = apps[0];
+      const crash = a.crash?.summary?.rates?.userPerceivedCrashRatePercent, anr = a.anr?.summary?.rates?.userPerceivedAnrRatePercent, avg = a.reviews?.average;
+      if (isNum(crash) || isNum(anr) || isNum(avg))
+        parts.push({ name: "App quality", v: (isNum(crash) ? (crash <= th.crash ? 35 : 0) : 17) + (isNum(anr) ? (anr <= th.anr ? 35 : 0) : 17) + (isNum(avg) ? (avg >= 4 ? 30 : avg >= 3.5 ? 15 : 0) : 15), tip: "35 for crash rate under Google's limit, 35 for ANR under the limit, 30 for a 4★+ recent rating." });
+    }
+    const overall = parts.length ? Math.round(parts.reduce((a, x) => a + x.v, 0) / parts.length) : null;
+    return { overall, parts };
+  }
+  const band = (v) => v >= 75 ? ["--good", "--good-text", "Strong"] : v >= 50 ? ["--warning", "--serious-text", "Fair"] : ["--critical", "--critical-text", "Needs work"];
+
+  function renderScore() {
+    const { overall, parts } = healthScore();
+    if (overall === null) return `<div class="pcard pc-score"><h3>Growth health</h3><span class="sk" style="height:90px"></span></div>`;
+    const [stroke, txt, word] = band(overall);
+    const r = 42, c = 2 * Math.PI * r;
+    return `<div class="pcard pc-score" title="A checklist score from simple, visible rules. Hover each bar to see how it's scored.">
+      <h3>Growth health</h3>
+      <div class="score">
+        <div class="ring" role="img" aria-label="Growth health ${overall} out of 100, ${word}">
+          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="${r}" fill="none" stroke="${css("--grid")}" stroke-width="10"/><circle cx="50" cy="50" r="${r}" fill="none" stroke="${css(stroke)}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(c * overall / 100).toFixed(1)} ${c.toFixed(1)}"/></svg>
+          <div class="n">${overall}<small style="color:var(${txt})">${word}</small></div>
+        </div>
+        <div class="subs">${parts.map(p => { const [s] = band(p.v); return `<div class="sub-row" title="${esc(p.tip)}"><span>${esc(p.name)}</span><b>${p.v}</b><span class="sbar"><i style="width:${p.v}%;background:var(${s})"></i></span></div>`; }).join("")}</div>
+      </div></div>`;
+  }
+
+  function renderGoing() {
+    if (!state.overview) return `<div class="pcard"><h3>What's going on</h3><div class="going">${`<div class="gi"><span class="sk" style="width:34px;height:34px;grid-row:span 2"></span><span class="sk" style="width:70%"></span><span class="sk" style="width:50%"></span></div>`.repeat(4)}</div></div>`;
+    const cur = state.currency, items = [];
+    const totals = (state.overview.data?.totals || []).filter(t => t.currency === cur).sort(byPlatform);
+    const prevAll = (state.overview.data?.previousTotals || []).filter(t => t.currency === cur);
+    const spend = totals.reduce((a, t) => a + (t.spend || 0), 0), pspend = prevAll.reduce((a, t) => a + (t.spend || 0), 0);
+    items.push({ ico: "$", cls: "acc", val: `${money(spend, cur, { raw: true })}${delta(spend, prevAll.length ? pspend : null, null, (v) => money(v, cur, { raw: true }))}`, lbl: "spent this period" });
+    const inst = totals.filter(t => isNum(t.installs));
+    if (inst.length) items.push({ ico: "↓", cls: "acc", val: inst.map(t => `${nf0.format(t.installs)}`).join(" · "), lbl: `installs · ${inst.map(t => PLATFORM[t.platform]).join(" · ")}` });
+    const b = labBoard();
+    const best = b?.items.filter(i => i.stage === "scale").sort((x, y) => x.cpi - y.cpi)[0];
+    if (best) items.push({ ico: "★", cls: "good", val: `${money(best.cpi, cur, { raw: true })} CPI`, lbl: `best ad · ${best.adName || best.adId}` });
+    if (b) {
+      const st = Object.fromEntries(b.stages.map(x => [x.stage, x.count]));
+      const as = b.assetStages || {}, hasA = (b.assets || []).length > 0;
+      const win = (st.scale || 0) + (as.scale || 0), test = (st.testing || 0) + (as.testing || 0), cut = (st.cut || 0) + (as.cut || 0);
+      items.push({ ico: "⚗", cls: test ? "acc" : "warn", val: `${win} win · ${test} test · ${cut} cut`, lbl: hasA ? "creative pipeline · ads + assets" : "creative pipeline" });
+    }
+    const cs = state.countries?.data || [];
+    if (cs.length) {
+      const tot = {}; for (const r of cs) tot[r.currency] = (tot[r.currency] || 0) + (r.spend || 0);
+      const w = {}; for (const r of cs) if (tot[r.currency] > 0) w[r.country] = { share: (w[r.country]?.share || 0) + (r.spend || 0) / tot[r.currency], name: r.countryName || r.country };
+      const top = Object.values(w).sort((a, b) => b.share - a.share)[0];
+      if (top) items.push({ ico: "◎", cls: "acc", val: `${top.name}`, lbl: `top market · ${nf0.format(top.share * 100 / Math.max(1, Object.keys(tot).length))}% of spend` });
+    }
+    const a = state.play?.data?.apps?.[0];
+    if (a) {
+      const th = state.play.data.thresholds || {};
+      const crash = a.crash?.summary?.rates?.userPerceivedCrashRatePercent, anr = a.anr?.summary?.rates?.userPerceivedAnrRatePercent;
+      const bad = (isNum(crash) && crash > th.crash) || (isNum(anr) && anr > th.anr);
+      items.push({ ico: bad ? "✕" : "✓", cls: bad ? "bad" : "good", val: bad ? (isNum(anr) && anr > th.anr ? `ANR ${nf2.format(anr)}%` : `Crashes ${nf2.format(crash)}%`) : "Vitals healthy", lbl: bad ? "over Google Play's limit" : `Google Play${isNum(a.reviews?.average) ? ` · ${nf2.format(a.reviews.average)}★ recent` : ""}` });
+    }
+    return `<div class="pcard"><h3><span class="live" aria-hidden="true"></span>What's going on</h3><div class="going">${items.slice(0, 6).map(i => `<div class="gi"><span class="ico ${i.cls}" aria-hidden="true">${esc(i.ico)}</span><span class="val">${i.val}</span><span class="lbl2" title="${esc(i.lbl)}">${esc(i.lbl)}</span></div>`).join("")}</div></div>`;
+  }
+
+  function improvements() {
+    const out = [], cur = state.currency;
+    const b = labBoard();
+    const a = state.play?.data?.apps?.[0];
+    if (a) {
+      const th = state.play.data.thresholds || {};
+      const crash = a.crash?.summary?.rates?.userPerceivedCrashRatePercent, anr = a.anr?.summary?.rates?.userPerceivedAnrRatePercent;
+      if (isNum(anr) && anr > th.anr) out.push({ tag: "fix", t: `Fix ANRs: ${nf2.format(anr)}% vs Google's ${th.anr}% limit`, d: "Play can lower your store visibility", act: "play" });
+      if (isNum(crash) && crash > th.crash) out.push({ tag: "fix", t: `Fix crashes: ${nf2.format(crash)}% vs Google's ${th.crash}% limit`, d: "Play can lower your store visibility", act: "play" });
+    }
+    if (b) {
+      const by = (k) => b.items.filter(i => i.stage === k);
+      const cut = by("cut");
+      if (cut.length) out.push({ tag: "cut", t: `Pause ${cut.length} losing ad${cut.length > 1 ? "s" : ""}: save ${money(cut.reduce((x, i) => x + (i.spend || 0), 0), cur, { raw: true })}`, d: "CPI 1.5×+ your median, or spend with no installs", act: "lab:cut" });
+      const win = by("scale").sort((x, y) => x.cpi - y.cpi)[0];
+      if (win) out.push({ tag: "scale", t: `Scale "${win.adName || win.adId}"`, d: `CPI ${money(win.cpi, cur, { raw: true })} · ${nf2.format(win.medianCpi / win.cpi).replace(/\.?0+$/, "")}× better than median`, act: "lab:scale" });
+      const tired = by("refresh");
+      if (tired.length) out.push({ tag: "refresh", t: `Refresh ${tired.length} tired creative${tired.length > 1 ? "s" : ""}`, d: "Frequency 3.5+: people keep seeing the same ad", act: "lab:refresh" });
+      const assets = b.assets || [];
+      const low = assets.filter(a => a.stage === "cut");
+      if (low.length) out.push({ tag: "cut", t: `Replace ${low.length} Low-rated asset${low.length > 1 ? "s" : ""}`, d: "Google rates them below other assets of the same kind", act: "lab:assets" });
+      const best = assets.find(a => a.stage === "scale");
+      if (best) out.push({ tag: "scale", t: `Make more like "${(best.label || "").slice(0, 40)}"`, d: `Google rates this ${(FIELD_ONE[best.fieldType] || "asset")} Best`, act: "lab:assets" });
+      const tests = by("testing").length + assets.filter(a => a.stage === "testing").length;
+      if (tests < 3) out.push({ tag: "test", t: `Launch new creative tests (${tests} running)`, d: "Top studios test new creatives every week", act: "lab:testing" });
+      const formats = new Set(b.items.filter(i => i.stage !== "untracked").map(i => i.format));
+      if (!formats.has("playable")) out.push({ tag: "test", t: "Test a playable ad", d: "~8× the install rate of non-playables for top games", act: "bench:playbook" });
+      if (!formats.has("ugc")) out.push({ tag: "test", t: "Test a creator-style (UGC) video", d: "Top apps keep raising UGC spend share", act: "bench:playbook" });
+      const total = b.stages.reduce((x, s) => x + s.spend, 0), un = b.stages.find(s => s.stage === "untracked");
+      if (total > 0 && un && un.spend / total > 0.15) out.push({ tag: "track", t: `Check install tracking on ${un.count} ad${un.count > 1 ? "s" : ""}`, d: `${nf0.format(un.spend / total * 100)}% of spend reports no installs`, act: "perf:noinst" });
+    }
+    const totals = (state.overview?.data?.totals || []).filter(t => t.currency === cur);
+    const prevAll = (state.overview?.data?.previousTotals || []).filter(t => t.currency === cur);
+    for (const t of totals) {
+      const p = prevAll.find(x => x.platform === t.platform);
+      if (isNum(t.cpi) && isNum(p?.cpi) && p.cpi > 0 && (t.cpi - p.cpi) / p.cpi >= 0.2)
+        out.push({ tag: "check", t: `${PLATFORM[t.platform]} CPI up ${nf0.format((t.cpi - p.cpi) / p.cpi * 100)}%`, d: `${money(p.cpi, cur, { raw: true })} → ${money(t.cpi, cur, { raw: true })} vs previous period`, act: "perf:cpi" });
+    }
+    const rv = a?.reviews;
+    if (rv && rv.count >= 5 && isNum(rv.average) && rv.average < 4) out.push({ tag: "fix", t: `Lift the rating: ${nf2.format(rv.average)}★ recently`, d: "Read the 1–2★ reviews for the top complaint", act: "play" });
+    const order = { fix: 0, cut: 1, check: 2, scale: 3, refresh: 4, track: 5, test: 6 };
+    return out.sort((x, y) => order[x.tag] - order[y.tag]);
+  }
+
+  function renderImprove() {
+    if (!state.overview || !state.creatives) return `<div class="pcard"><h3>Improve next</h3>${`<span class="sk" style="height:28px;margin-bottom:8px"></span>`.repeat(4)}</div>`;
+    const list = improvements().slice(0, 6);
+    return `<div class="pcard"><h3>Improve next</h3>${list.length ? `<div class="acts">${list.map(i => `<button type="button" class="act" data-act="${esc(i.act)}" title="${esc(i.d)}"><span class="tag2 ${i.tag}">${i.tag.toUpperCase()}</span><span class="t">${esc(i.t)}<small>${esc(i.d)}</small></span><span class="go" aria-hidden="true">›</span></button>`).join("")}</div>` : `<div class="allgood"><span aria-hidden="true">✓</span>Nothing urgent. Keep testing new creatives.</div>`}</div>`;
+  }
+
+  function renderInsights() {
+    $("#pulse").innerHTML = renderScore() + renderGoing() + renderImprove();
+    renderIssues();
+  }
+
+  $("#pulse").addEventListener("click", (e) => {
+    const act = e.target.closest("[data-act]")?.dataset.act;
+    if (act) runAct(act);
+  });
+  function flashTo(el) {
+    if (!el) return;
+    el.scrollIntoView();
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1300);
+  }
+  function runAct(act) {
+    const [where, arg] = String(act).split(":");
+    if (where === "play") { flashTo($("#playCard")); return; }
+    if (where === "lab") {
+      $("#labCard").scrollIntoView();
+      if (arg === "assets") { $("#labAssets")?.scrollIntoView(); return; }
+      const col = document.querySelector(`.lcol[data-stage="${arg}"]`);
+      if (col) { col.classList.add("flash"); setTimeout(() => col.classList.remove("flash"), 1600); }
+      return;
+    }
+    if (where === "bench") { state.benchTab = arg; renderBench(); $("#benchCard").scrollIntoView(); return; }
+    if (arg === "noinst") { state.noInstalls = true; $("#noInstalls").checked = true; }
+    if (arg === "cpi") state.sort = { key: "cpi", dir: -1 };
+    state.shown = PAGE; renderTable(); $("#perfCard").scrollIntoView();
+  }
+
+  // ------------------------------------------------------------------ creative lab
+  function renderLab() {
+    const el = $("#lab");
+    if (!state.creatives) { el.innerHTML = `<span class="sk" style="height:14px"></span><div class="lab-cols">${`<div class="lcol" style="--st:var(--border-strong)"><span class="sk" style="width:50%"></span><span class="sk" style="height:58px"></span><span class="sk" style="height:58px"></span></div>`.repeat(5)}</div>`; return; }
+    const b = labBoard();
+    if (!b || (!b.items.length && !(b.assets || []).length)) { el.innerHTML = `<div class="empty">No ads delivered in this period.</div>`; return; }
+    const cur = b.currency;
+    const st = Object.fromEntries(b.stages.map(x => [x.stage, x]));
+    const all = STAGES.concat([{ k: "untracked", name: "No install tracking", color: "--border-strong" }]);
+    const bar = all.filter(s => st[s.k]?.spend > 0).map(s => `<i style="flex:${st[s.k].spendSharePercent} 0 0;background:var(${s.color})" title="${esc(s.name)}: ${esc(money(st[s.k].spend, cur, { raw: true }))} (${nf0.format(st[s.k].spendSharePercent)}%)"></i>`).join("");
+    const leg = all.filter(s => st[s.k]?.spend > 0).map(s => `<span><i style="background:var(${s.color})"></i>${esc(s.name)} <b>${nf0.format(st[s.k].spendSharePercent)}%</b></span>`).join("");
+    const live = b.items.filter(i => i.stage !== "untracked").length;
+    const fmts = [...new Set(b.items.filter(i => i.stage !== "untracked").map(i => i.format))].filter(f => f !== "other");
+    const maxIpm = Math.max(0.01, ...b.items.map(i => i.ipm || 0));
+    const card = (i) => {
+      const pc = color(i.platform);
+      const freq = isNum(i.frequency) ? `<span class="freq ${i.frequency >= 3.5 ? "hi" : ""}" title="Frequency: average times each person saw it">×${nf2.format(i.frequency).replace(/\.?0+$/, "")}</span>` : "";
+      return `<div class="cc" style="--pc:${pc}" title="${esc(i.reason)}">
+        <span class="thumb" title="${esc(FORMAT_NAME[i.format])} · ${esc(PLATFORM[i.platform])}" aria-hidden="true">${FORMAT_ICON[i.format] || "●"}</span>
+        <div class="nm2">${esc(i.adName || i.adId || "(unnamed)")}<span class="sr"> (${esc(PLATFORM[i.platform])})</span></div>
+        <div class="row2"><b>${money(i.cpi, cur)}</b><span>CPI</span><span>${money(i.spend, cur)}</span>${freq}${statusClass(i.status) === "paused" ? `<span class="freq">Paused</span>` : ""}</div>
+        <div class="ipmbar" title="IPM ${isNum(i.ipm) ? nf2.format(i.ipm) : "—"} (installs per 1,000 impressions)"><i style="width:${isNum(i.ipm) ? Math.max(3, i.ipm / maxIpm * 100).toFixed(1) : 0}%"></i></div>
+      </div>`;
+    };
+    const cols = STAGES.map(s => {
+      const items = b.items.filter(i => i.stage === s.k);
+      const shown = items.slice(0, 4), more = items.slice(4);
+      return `<div class="lcol" data-stage="${s.k}" style="--st:var(${s.color})">
+        <h4><span class="si" aria-hidden="true">${s.icon}</span>${esc(s.name)}<span class="c">${items.length}</span></h4>
+        <div class="hint">${esc(s.hint)}</div>
+        ${shown.map(card).join("") || `<div class="none">None right now</div>`}
+        ${more.length ? `<details><summary>+${more.length} more</summary><div style="display:grid;gap:8px">${more.map(card).join("")}</div></details>` : ""}
+      </div>`;
+    }).join("");
+    const un = st.untracked?.count ? `<p class="muted" style="font-size:12px;margin:10px 0 0">${st.untracked.count} ad${st.untracked.count > 1 ? "s" : ""} with no install tracking (e.g. search or retargeting) aren't sorted.</p>` : "";
+    const rules = state.labRules ? `<div class="rules">${STAGES.concat([{ k: "untracked", name: "No install tracking" }]).map(s => `<div><b>${esc(s.name)}:</b> ${esc(state.creatives.data.rules?.[s.k] || "")}</div>`).join("")}<div>Each ad is judged against the median CPI of its own platform (ads with 10+ installs). Format icons (▶ video, ◆ playable, ☺ creator, ▣ static) are guessed from ad names.</div></div>` : "";
+    el.innerHTML = `<div class="lab-top">
+        <div><div class="splitbar" role="img" aria-label="Spend split by stage">${bar}</div><div class="slegend">${leg}</div></div>
+        <div class="lab-ref"><span class="chip2"><b>${live}</b> creatives live</span><span class="chip2">formats: <b>${fmts.length ? fmts.map(f => FORMAT_ICON[f]).join(" ") : "—"}</b></span><span class="chip2" title="AppsFlyer, State of Gaming for Marketers 2026">top spenders: <b>~2,500</b>/quarter${fn("appsflyer-gaming-2026")}</span></div>
+      </div>
+      <div class="lab-cols">${cols}</div>${un}${rules}${renderAssets(b)}`;
+  }
+
+  const FIELD_NAME = { HEADLINE: "Headlines", LONG_HEADLINE: "Long headlines", DESCRIPTION: "Descriptions", MARKETING_IMAGE: "Images", SQUARE_MARKETING_IMAGE: "Square images", PORTRAIT_MARKETING_IMAGE: "Portrait images", LANDSCAPE_LOGO: "Logos", LOGO: "Logos", YOUTUBE_VIDEO: "Videos", MEDIA_BUNDLE: "HTML5 / playables", MANDATORY_AD_TEXT: "Required text" };
+  const FIELD_ONE = { HEADLINE: "headline", LONG_HEADLINE: "headline", DESCRIPTION: "description", MARKETING_IMAGE: "image", SQUARE_MARKETING_IMAGE: "image", PORTRAIT_MARKETING_IMAGE: "image", YOUTUBE_VIDEO: "video", MEDIA_BUNDLE: "playable" };
+  const RATING = { BEST: ["Best", "--good"], GOOD: ["Good", "--text-secondary"], LOW: ["Low", "--critical"], LEARNING: ["Learning", "--text-muted"], PENDING: ["Pending", "--text-muted"] };
+  const ASSET_ICON = { video: "▶ ", image: "▣ " };
+
+  /** Individual headlines, descriptions, images and videos inside asset-based ads (Google App campaigns). */
+  function renderAssets(b) {
+    const list = b.assets || [];
+    if (!list.length) return "";
+    const cur = b.currency, as = b.assetStages || {};
+    const order = ["YOUTUBE_VIDEO", "MEDIA_BUNDLE", "MARKETING_IMAGE", "SQUARE_MARKETING_IMAGE", "PORTRAIT_MARKETING_IMAGE", "HEADLINE", "LONG_HEADLINE", "DESCRIPTION"];
+    const groups = {};
+    for (const a of list) (groups[a.fieldType] ||= []).push(a);
+    const rank = (k) => { const i = order.indexOf(k); return i < 0 ? 99 : i; };
+    const keys = Object.keys(groups).sort((x, y) => rank(x) - rank(y));
+    const rateChip = (a) => { const [n, c] = RATING[a.performanceLabel] || ["Not rated", "--text-muted"]; return `<span class="rate" style="--st:var(${c})" title="${esc(a.reason)}">${n}</span>`; };
+    const body = keys.map(k => `<tr class="fgrp"><td colspan="7">${esc(FIELD_NAME[k] || k)} · ${groups[k].length}</td></tr>` + groups[k].map(a => {
+      const name = esc(a.label || a.assetId);
+      const link = a.previewUrl && a.previewUrl.startsWith("https://") ? `<a href="${esc(a.previewUrl)}" target="_blank" rel="noopener noreferrer">${name}</a>` : name;
+      return `<tr><td>${rateChip(a)}</td><td class="name"><div class="nm"><span aria-hidden="true">${ASSET_ICON[a.assetType] || ""}</span>${link}</div><div class="crumb">${esc(a.campaignName || "")}${a.adSetName ? " › " + esc(a.adSetName) : ""}</div></td>
+        <td class="n">${isNum(a.impressions) ? nf0.format(a.impressions) : NA}</td><td class="n">${pct(a.ctr)}</td><td class="n">${isNum(a.installs) ? nf0.format(a.installs) : NA}</td><td class="n">${money(a.cpi, cur)}</td><td class="n">${money(a.spend, cur)}</td></tr>`;
+    }).join("")).join("");
+    const summary = [["scale", "Best"], ["steady", "Good"], ["cut", "Low"], ["testing", "Learning / not rated"]].filter(([k]) => as[k]).map(([k, n]) => `<span class="chip2">${n}: <b>${as[k]}</b></span>`).join(" ");
+    return `<div class="assets" id="labAssets">
+      <h3>Inside your Google App ads</h3>
+      <p class="sub2">A Google App campaign mixes these headlines, descriptions, images and videos into many ads. Google rates each one against others of the same kind: <b>Low</b> → replace it, <b>Best</b> → make more like it, <b>Learning</b> → not enough data yet. Asset numbers overlap (one impression counts for a headline <i>and</i> a video) and Google breaks down only part of the results, so they don't add up to the ad's total.</p>
+      <div class="lab-ref" style="justify-content:flex-start;margin-bottom:10px">${summary}</div>
+      <div class="table-wrap"><table><thead><tr><th>Google rating</th><th>Asset</th><th class="n">Impr.</th><th class="n">CTR</th><th class="n">Installs</th><th class="n">CPI</th><th class="n">Spend</th></tr></thead><tbody>${body}</tbody></table></div>
+    </div>`;
+  }
+  $("#labRules").addEventListener("click", () => { state.labRules = !state.labRules; $("#labRules").setAttribute("aria-expanded", String(state.labRules)); renderLab(); });
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("#lab a[data-src]"); if (!a) return;
+    e.preventDefault(); state.benchTab = "sources"; renderBench(); $("#benchCard").scrollIntoView();
+  });
+
+  // ------------------------------------------------------------------ trends
+  function renderTrends() {
+    const daily = (state.overview?.data?.daily || []).filter(d => d.currency === state.currency);
+    const platforms = [...new Set(daily.map(d => d.platform))].sort(byPlatform);
+    const series = (key) => platforms.map(p => ({
+      key: p, name: PLATFORM[p], color: color(p),
+      points: daily.filter(d => d.platform === p).map(d => ({ x: d.date, y: d[key] })),
+    }));
+    const cur = state.currency;
+    $("#spendSub").textContent = cur ? `in ${cur}` : "";
+    lineChart($("#chartSpend"), series("spend"), (v) => money(v, cur, { raw: true }), (v) => money(v, cur, { compact: true, raw: true }));
+    lineChart($("#chartInstalls"), series("installs").filter(s => s.points.some(p => isNum(p.y))), (v) => isNum(v) ? nf0.format(Math.round(v * 10) / 10) : "—", (v) => compact.format(v));
+    legend($("#legendSpend"), series("spend"));
+    legend($("#legendInstalls"), series("installs").filter(s => s.points.some(p => isNum(p.y))));
+    dataTable($("#tblSpend"), series("spend"), (v) => money(v, cur, { raw: true }));
+    dataTable($("#tblInstalls"), series("installs"), (v) => isNum(v) ? nf2.format(v) : "—");
+    // CPI per day = that day's spend ÷ that day's attributed installs; no installs -> gap, not zero.
+    const cpi = platforms.map(p => ({
+      key: p, name: PLATFORM[p], color: color(p),
+      points: daily.filter(d => d.platform === p).map(d => ({ x: d.date, y: d.installs > 0 && isNum(d.spend) ? d.spend / d.installs : null, installs: d.installs })),
+    })).filter(s => s.points.some(p => isNum(p.y)));
+    $("#cpiSub").textContent = (cur ? `${cur} · ` : "") + "spend ÷ attributed installs · lower is better";
+    const totals = (state.overview?.data?.totals || []).filter(t => t.currency === cur && isNum(t.cpi));
+    const refs = cpi.map(s => { const t = totals.find(t => t.platform === s.key); return t ? { y: t.cpi, color: s.color, label: `${cpi.length > 1 ? s.name + " " : ""}avg ${money(t.cpi, cur, { raw: true })}` } : null; }).filter(Boolean);
+    lineChart($("#chartCpi"), cpi, (v, p) => isNum(v) ? `${money(v, cur, { raw: true })} · ${nf0.format(p?.installs || 0)} installs` : "no installs", (v) => money(v, cur, { compact: true, raw: true }),
+      { capY: true, refs, empty: state.overview ? "No attributed installs in this period, so CPI can't be charted." : "" });
+    legend($("#legendCpi"), cpi);
+    dataTable($("#tblCpi"), cpi, (v) => isNum(v) ? money(v, cur, { raw: true }) : "—");
+  }
+
+  function legend(el, series) {
+    el.innerHTML = series.length > 1 ? series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("") : "";
+  }
+
+  function dataTable(el, series, fmt) {
+    const dates = [...new Set(series.flatMap(s => s.points.map(p => p.x)))].sort();
+    if (!dates.length) { el.innerHTML = ""; return; }
+    el.innerHTML = `<table><thead><tr><th>Date</th>${series.map(s => `<th class="n">${esc(s.name)}</th>`).join("")}</tr></thead><tbody>${dates.map(d =>
+      `<tr><td>${esc(d)}</td>${series.map(s => `<td class="n">${esc(fmt(s.points.find(p => p.x === d)?.y))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  }
+
+  function niceMax(v) {
+    if (!(v > 0)) return 1;
+    const exp = Math.pow(10, Math.floor(Math.log10(v)));
+    const f = v / exp;
+    const steps = [1, 1.2, 1.6, 2, 2.4, 3.2, 4, 4.8, 6, 8, 10]; // quarters stay round numbers
+    return steps.find(st => f * 1.05 <= st) * exp || 10 * exp;
+  }
+
+  /** opts: numeric (x values are numbers), xLabel(x) for the axis, xTitle(x) for the tooltip, empty (text), maxY (fixed top). */
+  function lineChart(el, series, fmtTip, fmtAxis, opts = {}) {
+    const dates = [...new Set(series.flatMap(s => s.points.map(p => p.x)))].sort(opts.numeric ? (a, b) => a - b : undefined);
+    if (!dates.length || !series.length) { el.innerHTML = opts.empty ? `<div class="empty">${esc(opts.empty)}</div>` : state.overview ? `<div class="empty">No data for this period.</div>` : `<span class="sk sk-chart"></span>`; return; }
+    const xLabel = opts.xLabel || dateLabel;
+    const xTitle = opts.xTitle || ((d) => new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" }));
+    const W = el.clientWidth || 600, H = el.clientHeight || 230;
+    const vals = series.flatMap(s => s.points.map(p => p.y)).filter(isNum).sort((a, b) => a - b);
+    let maxY = opts.maxY || niceMax(Math.max(0, ...vals, ...(opts.refs || []).map(r => r.y)));
+    // capY: one extreme day must not flatten the rest; points above the cap are clipped with a marker.
+    if (opts.capY && vals.length >= 5) { const p90 = vals[Math.floor(vals.length * 0.9) - 1]; maxY = Math.min(maxY, niceMax(Math.max(p90 * 1.2, ...(opts.refs || []).map(r => r.y * 1.1)))); }
+    const tickW = Math.max(...[0, 1, 2, 3, 4].map(k => String(fmtAxis(maxY * k / 4)).length)) * 6.6;
+    const m = { l: Math.max(24, tickW) + 14, r: 14, t: 12, b: 26 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const x = (i) => m.l + (dates.length === 1 ? iw / 2 : i / (dates.length - 1) * iw);
+    const y = (v) => m.t + ih - Math.min(v, maxY) / maxY * ih;
+    const idx = Object.fromEntries(dates.map((d, i) => [d, i]));
+
+    let g = `<g class="axis">`;
+    for (let k = 0; k <= 4; k++) {
+      const v = maxY * k / 4, yy = y(v);
+      g += `<line class="${k === 0 ? "baseline" : "gridline"}" x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}"/>`;
+      g += `<text x="${m.l - 8}" y="${yy + 4}" text-anchor="end">${esc(fmtAxis(v))}</text>`;
+    }
+    const step = Math.max(1, Math.ceil(dates.length / Math.max(2, Math.floor(iw / 80))));
+    const ticks = opts.ticks ? dates.map((d, i) => opts.ticks.includes(d) ? i : -1).filter(i => i >= 0)
+      : dates.map((_, i) => i).filter(i => i === dates.length - 1 || (i % step === 0 && (dates.length - 1 - i) * iw / Math.max(1, dates.length - 1) >= 44));
+    for (const i of ticks) g += `<text x="${x(i)}" y="${H - 6}" text-anchor="${dates.length > 1 && i === dates.length - 1 ? "end" : i === 0 && dates.length > 1 ? "start" : "middle"}">${esc(xLabel(dates[i]))}</text>`;
+    for (const r of opts.refs || []) {
+      if (!(r.y <= maxY)) continue;
+      g += `<line class="ref" x1="${m.l}" x2="${W - m.r}" y1="${y(r.y)}" y2="${y(r.y)}" style="stroke:${r.color || "var(--text-muted)"}"/><text class="reflabel" x="${W - m.r - 2}" y="${y(r.y) - 4}" text-anchor="end">${esc(r.label)}</text>`;
+    }
+    g += `</g>`;
+
+    let paths = "", labels = [];
+    for (const s of series) {
+      const pts = s.points.filter(p => idx[p.x] !== undefined).sort((a, b) => idx[a.x] - idx[b.x]);
+      let d = "", pen = false;
+      for (const p of pts) {
+        if (!isNum(p.y)) { pen = false; continue; }
+        d += `${pen ? "L" : "M"}${x(idx[p.x]).toFixed(1)},${y(p.y).toFixed(1)}`; pen = true;
+      }
+      if (pts.length === 1 && isNum(pts[0].y)) paths += `<circle cx="${x(idx[pts[0].x])}" cy="${y(pts[0].y)}" r="4" fill="${s.color}"/>`;
+      paths += `<path class="series${s.dash ? " dash" : ""}" d="${d}" stroke="${s.color}"/>`;
+      if (s.dots) for (const p of pts) if (isNum(p.y)) paths += `<circle class="pdot" cx="${x(idx[p.x])}" cy="${y(p.y)}" r="3.5" fill="${s.color}"/>`;
+      if (s.valueLabels) for (const p of pts) if (isNum(p.y) && s.valueLabels.includes(p.x)) paths += `<text class="vlabel" x="${x(idx[p.x])}" y="${y(p.y) - 9}" text-anchor="middle">${esc(fmtTip(p.y, p).split(" ")[0])}</text>`;
+      if (opts.capY) for (const p of pts) if (isNum(p.y) && p.y > maxY) paths += `<text class="clip" x="${x(idx[p.x])}" y="${m.t + 8}" text-anchor="middle">▲</text>`;
+      const last = [...pts].reverse().find(p => isNum(p.y));
+      if (last && series.length > 1) labels.push({ y: y(last.y), x: x(idx[last.x]), name: s.name, color: s.color });
+    }
+    labels.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 14) labels[i].y = labels[i - 1].y + 14;
+    const dl = "";   // series names live in the card legend; end-of-line labels only duplicated it
+
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily chart">${g}${paths}${dl}<g class="hover"></g><rect class="hit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/></svg>`;
+    const svg = el.querySelector("svg"), hover = svg.querySelector(".hover"), tip = $("#tip");
+    const hit = svg.querySelector(".hit");
+    const show = (evt) => {
+      const r = svg.getBoundingClientRect();
+      const px = (evt.clientX - r.left) * (W / r.width);
+      const i = dates.length === 1 ? 0 : Math.max(0, Math.min(dates.length - 1, Math.round((px - m.l) / iw * (dates.length - 1))));
+      const d = dates[i], xx = x(i);
+      let dots = `<line class="cross" x1="${xx}" x2="${xx}" y1="${m.t}" y2="${m.t + ih}"/>`;
+      let rows = "";
+      for (const s of series) {
+        const p = s.points.find(q => q.x === d);
+        if (p && isNum(p.y)) dots += `<circle class="hoverdot" cx="${xx}" cy="${y(p.y)}" r="5" fill="${s.color}"/>`;
+        rows += `<div class="r"><span><i class="sw" style="background:${s.color}"></i>${esc(s.name)}</span><b>${esc(fmtTip(p?.y, p))}</b></div>`;
+      }
+      hover.innerHTML = dots;
+      tip.innerHTML = `<div class="t">${esc(xTitle(d))}</div>${rows}`;
+      tip.style.display = "block";
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      let left = evt.clientX + 14, top = evt.clientY - th - 10;
+      if (left + tw > window.innerWidth - 8) left = evt.clientX - tw - 14;
+      if (top < 8) top = evt.clientY + 14;
+      tip.style.left = left + window.scrollX + "px"; tip.style.top = top + window.scrollY + "px";
+    };
+    const hide = () => { hover.innerHTML = ""; tip.style.display = "none"; };
+    hit.addEventListener("pointermove", show);
+    hit.addEventListener("pointerdown", show);
+    hit.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") hide(); });
+    document.addEventListener("pointerdown", (e) => { if (!el.contains(e.target)) hide(); }, { capture: true });
+  }
+
+  // ------------------------------------------------------------------ performance table
+  const COLS = [
+    { key: "name", label: "Name", cls: "name" },
+    { key: "platform", label: "Platform" },
+    { key: "status", label: "Status" },
+    { key: "spend", label: "Spend", n: true },
+    { key: "share", label: "Share of spend", n: true, nosort: true },
+    { key: "impressions", label: "Impr.", n: true },
+    { key: "clicks", label: "Clicks", n: true },
+    { key: "ctr", label: "CTR", n: true },
+    { key: "cpc", label: "CPC", n: true },
+    { key: "cpm", label: "CPM", n: true },
+    { key: "installs", label: "Installs", n: true },
+    { key: "cpi", label: "CPI", n: true },
+  ];
+
+  const levelLabel = () => ({ ad: "ads", adset: "ad sets", campaign: "campaigns" }[state.level]);
+  const nameOf = (r) => state.level === "ad" ? r.adName : state.level === "adset" ? r.adSetName : r.campaignName;
+  const idOf = (r) => state.level === "ad" ? r.adId : state.level === "adset" ? r.adSetId : r.campaignId;
+
+  function filteredRows() {
+    let rows = state.overview?.data?.rows || [];
+    const q = state.search.trim().toLowerCase();
+    if (q) rows = rows.filter(r => [r.adName, r.adSetName, r.campaignName, r.adId, r.adSetId, r.campaignId, r.accountName].some(v => (v || "").toLowerCase().includes(q)));
+    if (state.status !== "all") rows = rows.filter(r => state.status === "active" ? statusClass(r.status) === "active" : statusClass(r.status) !== "active");
+    if (state.noInstalls) rows = rows.filter(r => r.spend > 0 && !(r.installs > 0));
+    const { key, dir } = state.sort;
+    const val = (r) => key === "name" ? (nameOf(r) || "").toLowerCase() : key === "platform" ? r.platform : key === "status" ? (r.status || "") : r[key];
+    return [...rows].sort((a, b) => {
+      const va = val(a), vb = val(b);
+      const na = va === null || va === undefined, nb = vb === null || vb === undefined;
+      if (na && nb) return 0; if (na) return 1; if (nb) return -1;
+      return (va < vb ? -1 : va > vb ? 1 : 0) * dir;
+    });
+  }
+
+  function renderTable() {
+    const title = { ad: "Performance by ad", adset: "Performance by ad set / ad group", campaign: "Performance by campaign" }[state.level];
+    $("#perfTitle").textContent = title;
+    const head = $("#perf thead");
+    head.innerHTML = `<tr>${COLS.map(c => {
+      const sorted = state.sort.key === c.key;
+      const label = c.key === "name" ? { ad: "Ad", adset: "Ad set / ad group", campaign: "Campaign" }[state.level] : c.label;
+      if (c.nosort) return `<th class="${c.n ? "n" : ""}">${esc(label)}</th>`;
+      return `<th class="${c.n ? "n" : ""}" ${sorted ? `aria-sort="${state.sort.dir > 0 ? "ascending" : "descending"}"` : ""}><button data-sort="${c.key}">${esc(label)}<span class="arrow">${sorted ? (state.sort.dir > 0 ? "▲" : "▼") : "↕"}</span></button></th>`;
+    }).join("")}</tr>`;
+
+    const body = $("#perf tbody");
+    if (!state.overview) { body.innerHTML = Array.from({ length: 6 }, (_, i) => `<tr><td class="name"><span class="sk" style="width:${55 + (i * 7) % 30}%"></span></td>${COLS.slice(1).map(c => `<td class="${c.n ? "n" : ""} mhide"><span class="sk" style="width:60%;margin-left:auto"></span></td>`).join("")}</tr>`).join(""); $("#perfMore").textContent = ""; return; }
+    const all = state.overview.data?.rows || [];
+    const rows = filteredRows();
+    const spendByCur = {};
+    for (const r of all) spendByCur[r.currency] = (spendByCur[r.currency] || 0) + (r.spend || 0);
+    const maxShare = Math.max(...all.map(r => spendByCur[r.currency] > 0 && isNum(r.spend) ? r.spend / spendByCur[r.currency] * 100 : 0), 1);
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="${COLS.length}" class="empty">${all.length ? "No rows match these filters." : "No delivery in this period."}</td></tr>`;
+      $("#perfMore").textContent = "";
+      return;
+    }
+    // Outliers and the best performer are judged within one currency, among rows with enough installs to be meaningful.
+    const cpiMed = {}, best = {};
+    for (const c of new Set(all.map(r => r.currency))) {
+      const elig = all.filter(r => r.currency === c && r.installs >= 3 && isNum(r.cpi));
+      cpiMed[c] = median(elig.map(r => r.cpi));
+      const b = all.filter(r => r.currency === c && r.installs >= 10 && isNum(r.cpi)).sort((a, b) => a.cpi - b.cpi)[0];
+      if (b) best[c] = b;
+    }
+    body.innerHTML = rows.slice(0, state.shown).map(r => {
+      const crumb = state.level === "ad" ? [r.campaignName, r.adSetName] : state.level === "adset" ? [r.campaignName] : [r.accountName || r.accountId, r.objective];
+      const share = spendByCur[r.currency] > 0 && isNum(r.spend) ? r.spend / spendByCur[r.currency] * 100 : null;
+      const sc = statusClass(r.status);
+      const noInst = r.spend > 0 && !(r.installs > 0);
+      return `<tr>
+        <td class="name"><div class="nm">${esc(nameOf(r) || "(unnamed)")}${best[r.currency] === r ? `<span class="best" title="Lowest CPI among ${esc(levelLabel())} with 10+ installs">★ Best CPI</span>` : ""}</div><div class="crumb">${crumb.filter(Boolean).map(esc).join(" › ")}${idOf(r) ? ` · <span title="ID">#${esc(idOf(r))}</span>` : ""}</div><div class="monly"><i class="sw ${esc(r.platform)}"></i> ${esc(PLATFORM[r.platform] || r.platform)} · ${esc(statusLabel(r.status))}</div></td>
+        <td class="mhide"><span class="plat"><i class="sw ${esc(r.platform)}"></i>${esc(PLATFORM[r.platform] || r.platform)}</span></td>
+        <td class="mhide">${sc === "active" ? `<span class="st-text">${esc(statusLabel(r.status))}</span>` : `<span class="badge ${sc}">${esc(statusLabel(r.status))}</span>`}</td>
+        <td class="n" data-l="Spend">${money(r.spend, r.currency)}</td>
+        <td class="n mhide">${isNum(share) ? `<span class="share" title="${nf2.format(share)}% of ${esc(r.currency)} spend"><span class="num">${nf1.format(share)}%</span><span class="track"><span class="fill" style="width:${Math.max(2, share / maxShare * 100).toFixed(1)}%"></span></span></span>` : NA}</td>
+        <td class="n mhide">${int(r.impressions)}</td>
+        <td class="n mhide">${int(r.clicks)}</td>
+        <td class="n mhide">${pct(r.ctr)}</td>
+        <td class="n mhide">${money(r.cpc, r.currency)}</td>
+        <td class="n mhide">${money(r.cpm, r.currency)}</td>
+        <td class="n" data-l="Installs">${noInst ? `<span class="badge warn" title="${r.installs === null || r.installs === undefined ? "No install events reported (tracking may be missing)" : "Zero installs reported"}">⚠ ${r.installs === null || r.installs === undefined ? "none reported" : "0"}</span>` : int(r.installs)}</td>
+        <td class="n ${isNum(r.cpi) && isNum(cpiMed[r.currency]) && r.installs >= 3 && r.cpi > cpiMed[r.currency] * 2 ? "hot" : ""}" data-l="CPI" ${isNum(r.cpi) && isNum(cpiMed[r.currency]) && r.installs >= 3 && r.cpi > cpiMed[r.currency] * 2 ? `title="Over 2× the median CPI (${esc(money(cpiMed[r.currency], r.currency, { raw: true }))})"` : ""}>${isNum(r.cpi) && isNum(cpiMed[r.currency]) && r.installs >= 3 && r.cpi > cpiMed[r.currency] * 2 ? "▲ " : ""}${money(r.cpi, r.currency)}</td>
+      </tr>`;
+    }).join("");
+    const more = rows.length > state.shown;
+    $("#perfMore").innerHTML = `<span>Showing ${Math.min(state.shown, rows.length)} of ${rows.length}${rows.length !== all.length ? ` (filtered from ${all.length})` : ""}</span>${more ? `<button class="btn" id="showMore" type="button">Show ${Math.min(PAGE, rows.length - state.shown)} more</button>` : ""}`;
+  }
+
+  function exportCsv() {
+    const rows = filteredRows();
+    const cols = ["platform", "accountId", "accountName", "campaignId", "campaignName", "adSetId", "adSetName", "adId", "adName", "status", "currency", "spend", "impressions", "reach", "clicks", "ctr", "cpc", "cpm", "installs", "cpi", "installSource"];
+    const cell = (v) => { if (v === null || v === undefined) return ""; const s = String(v); return /[",\n]/.test(s) || /^[=+\-@]/.test(s) ? `"${s.replace(/^([=+\-@])/, "'$1").replace(/"/g, '""')}"` : s; };
+    const csv = [cols.join(","), ...rows.map(r => cols.map(c => cell(r[c])).join(","))].join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `meeza-${state.level}-${state.overview?.dateRange || "report"}.csv`.replace(/\.\./g, "_to_");
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // ------------------------------------------------------------------ countries
+  function renderCountries() {
+    const head = $("#countries thead"), body = $("#countries tbody");
+    head.innerHTML = `<tr><th>Country</th><th>Platform</th><th class="n">Spend</th><th class="n mhide">Share</th><th class="n mhide">Impr.</th><th class="n mhide">Clicks</th><th class="n mhide">CTR</th><th class="n">Installs</th><th class="n">CPI</th></tr>`;
+    if (!state.countries) { body.innerHTML = `<tr><td colspan="9" class="empty">Loading…</td></tr>`; return; }
+    let rows = state.countries.data || [];
+    const totalByCur = {};
+    for (const r of rows) totalByCur[r.currency] = (totalByCur[r.currency] || 0) + (r.spend || 0);
+    const q = state.countrySearch.trim().toLowerCase();
+    if (q) rows = rows.filter(r => (r.countryName || "").toLowerCase().includes(q) || (r.country || "").toLowerCase() === q);
+    // Group platforms under each country; order countries by their combined share of spend.
+    const shareOf = (r) => totalByCur[r.currency] > 0 && isNum(r.spend) ? r.spend / totalByCur[r.currency] : 0;
+    const weight = {};
+    for (const r of rows) weight[r.country] = (weight[r.country] || 0) + shareOf(r);
+    rows = [...rows].sort((a, b) => (weight[b.country] - weight[a.country]) || a.country.localeCompare(b.country) || byPlatform(a, b));
+    const maxShare = Math.max(...(state.countries.data || []).map(r => totalByCur[r.currency] > 0 && isNum(r.spend) ? r.spend / totalByCur[r.currency] * 100 : 0), 1);
+    if (!rows.length) { body.innerHTML = `<tr><td colspan="9" class="empty">${q ? "No matching countries." : "No country data for this period."}</td></tr>`; $("#countryMore").textContent = ""; return; }
+    let group = -1, last = null;
+    body.innerHTML = rows.slice(0, state.countryShown).map(r => {
+      const share = totalByCur[r.currency] > 0 && isNum(r.spend) ? r.spend / totalByCur[r.currency] * 100 : null;
+      const first = r.country !== last; if (first) { group++; last = r.country; }
+      return `<tr class="${first ? "grp" : ""} ${group % 2 ? "alt" : ""}">
+        <td>${first ? `<b>${esc(r.countryName || r.country)}</b> <span class="muted">${esc(r.country)}</span>` : ""}</td>
+        <td><span class="plat"><i class="sw ${esc(r.platform)}"></i><span class="pn">${esc(PLATFORM[r.platform] || r.platform)}</span></span></td>
+        <td class="n">${money(r.spend, r.currency)}</td>
+        <td class="n mhide">${isNum(share) ? `<span class="share"><span class="num">${nf1.format(share)}%</span><span class="track"><span class="fill" style="width:${Math.max(2, share / maxShare * 100).toFixed(1)}%"></span></span></span>` : NA}</td>
+        <td class="n mhide">${int(r.impressions)}</td><td class="n mhide">${int(r.clicks)}</td><td class="n mhide">${pct(r.ctr)}</td>
+        <td class="n">${int(r.installs)}</td><td class="n">${money(r.cpi, r.currency)}</td></tr>`;
+    }).join("");
+    $("#countryMore").innerHTML = `<span>Showing ${Math.min(state.countryShown, rows.length)} of ${rows.length}</span>${rows.length > state.countryShown ? `<button class="btn" id="countryMoreBtn" type="button">Show more</button>` : ""}`;
+  }
+
+  // ------------------------------------------------------------------ Players (GA4)
+  const VERDICT = { insufficient_data: "Too early to judge", fix_the_game: "Fix the game first", iterate: "Iterate", promising: "Promising", strong: "Strong" };
+  function renderPlayers() {
+    const el = $("#players");
+    const r = state.players, d = r?.data;
+    if (!r) { el.innerHTML = `<div class="empty">Loading…</div>`; return; }
+    const errText = (r.errors || []).map(e => e.message).join(" ");
+    if (!d) { el.innerHTML = `<div class="empty">Player data could not be loaded. ${esc(errText)}</div>`; return; }
+    if (!d.configured) { el.innerHTML = `<div class="empty">Google Analytics 4 / Firebase is not connected. <a href="#settings">Connect it in Settings →</a> It adds active users, retention and a "can this game work?" scorecard.</div>`; return; }
+    if (!d.properties.length) { el.innerHTML = `<div class="empty">${esc(errText || "No GA4 properties are shared with the service account.")}</div>`; return; }
+    el.innerHTML = `<div class="apps">${d.properties.map(playerCard).join("")}</div>`;
+    d.properties.forEach((p, i) => drawRetention(p, i));
+    renderIssues();
+  }
+
+  const MIN_COHORT = 5;   // a day with 1-4 installs swings 0-100% and hides the trend
+  function drawRetention(p, i) {
+    const acc = css("--accent"), alt = css("--series-google");
+    const curve = (p.curve || []).filter(x => isNum(x.percent) && x.day >= 1);   // Day 0 is always 100% and flattens the rest
+    lineChart(document.getElementById("retCurve" + i),
+      curve.length ? [
+        { key: "ret", name: "Your game", color: acc, dots: true, valueLabels: [1, 7, 30], points: curve.map(x => ({ x: x.day, y: x.percent, users: x.users })) },
+        { key: "bench", name: "Top-25% games", color: css("--text-muted"), dash: true, points: [[1, 30], [7, 6.5], [30, 1.7]].filter(([d]) => d <= curve[curve.length - 1].day).map(([d, v]) => ({ x: d, y: v, bench: true })) },
+      ] : [],
+      (v, pt) => !isNum(v) ? "—" : pt?.bench ? `${nf1.format(v)}%` : `${nf1.format(v)}% of ${nf0.format(pt?.users || 0)}`, (v) => nf0.format(v) + "%",
+      { numeric: true, ticks: [1, 3, 7, 14, 30], xLabel: (x) => "D" + x, xTitle: (x) => `Day ${x} after install`, empty: "Not enough complete days yet. Pick a longer date range." });
+    legend(document.getElementById("retCurveLeg" + i), curve.length ? [{ name: "Your game", color: acc }, { name: "Top-25% games", color: css("--text-muted") }] : []);
+    const co = (p.cohorts || []).filter(x => isNum(x.d1) || isNum(x.d7));
+    const series = [{ key: "d1", name: "Day 1", color: acc, dots: co.length <= 31, points: co.map(x => ({ x: x.date, y: x.users >= MIN_COHORT ? x.d1 : null, users: x.users })) }];
+    if (co.some(x => isNum(x.d7))) series.push({ key: "d7", name: "Day 7", color: alt, points: co.map(x => ({ x: x.date, y: x.users >= MIN_COHORT ? x.d7 : null, users: x.users })) });
+    legend(document.getElementById("retD1Leg" + i), co.length ? series : []);
+    lineChart(document.getElementById("retD1" + i), co.length ? series : [],
+      (v, pt) => isNum(v) ? `${nf1.format(v)}% · ${nf0.format(pt?.users || 0)} installs` : pt && pt.users < MIN_COHORT ? `only ${nf0.format(pt.users)} installs, too few` : "not yet", (v) => nf0.format(v) + "%",
+      { refs: [{ y: 25, color: css("--good"), label: "aim 25%+" }], xTitle: (d) => "Installed " + new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }), empty: "No complete install days yet." });
+  }
+
+  function dauSpark(daily) {
+    if (!daily || daily.length < 2) return "";
+    const W = 200, H = 40, max = Math.max(1, ...daily.map(x => x.activeUsers));
+    const bw = W / daily.length;
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Daily active users" style="display:block;width:100%;height:64px;margin-top:6px">${daily.map((x, i) => {
+      const h = Math.max(1, x.activeUsers / max * (H - 2));
+      return `<rect x="${(i * bw + 0.5).toFixed(1)}" y="${(H - h).toFixed(1)}" width="${Math.max(1, bw - 1).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${css("--accent")}" opacity="${i >= daily.length - 2 ? 0.45 : 1}"><title>${esc(x.date)}: ${x.activeUsers} active, ${x.newUsers} new</title></rect>`;
+    }).join("")}</svg>`;
+  }
+
+  function playerCard(p, i) {
+    const sc = p.scorecard || {};
+    const grade = {}; for (const g of sc.retention || []) grade[g.metric] = g.grade;
+    const tile = (label, v, sub) => `<div class="vital"><div class="label">${esc(label)}</div><div class="value num">${v}</div>${sub ? `<div class="state muted">${sub}</div>` : ""}</div>`;
+    const rets = (p.retention || []).map(x => {
+      const g = grade["D" + x.day];
+      const pill = g && g !== "not_enough_data" ? ` <span class="pill ${g === "weak" ? "bad" : g === "good" || g === "great" || g === "strong" ? "good" : "mid"}">${esc(g)}</span>` : "";
+      return `<div class="vital"><div class="label">Day ${x.day}${pill}</div><div class="value num">${isNum(x.percent) ? nf1.format(x.percent) + "%" : "—"}</div><div class="state muted">${x.users ? nf0.format(x.users) + " users" : "not yet"}</div></div>`;
+    }).join("");
+    const mins = isNum(p.engagementSecondsPerUser) ? `${Math.floor(p.engagementSecondsPerUser / 60)}m ${Math.round(p.engagementSecondsPerUser % 60)}s` : "—";
+    return `<article class="app" style="grid-template-columns:minmax(0,1fr)">
+      <div class="col">
+        <div><h3>${esc(p.displayName || "GA4 property")}</h3><div class="pkg">property ${esc(p.propertyId)}</div></div>
+        <div class="verdict ${esc(sc.verdict || "")}"><b>${esc(VERDICT[sc.verdict] || sc.verdict || "")}${sc.provisional && sc.verdict !== "insufficient_data" ? " (provisional)" : ""}</b> · ${esc(sc.headline || "")}
+          ${(sc.reasons || []).length ? `<ul>${sc.reasons.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+          ${(sc.nextSteps || []).length ? `<div style="font-size:12px;margin-top:8px;color:var(--text-secondary)">Next steps</div><ul>${sc.nextSteps.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}</div>
+        <div><div class="label" style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">Retention (players who came back on day N)</div><div class="rets">${rets}</div></div>
+        <div class="rcharts">
+          <div><div class="chead"><div class="ctitle">Retention curve<small>all installs in range · Day 0 = 100%</small></div><div class="legend" id="retCurveLeg${i}"></div></div><div class="chart" id="retCurve${i}"></div></div>
+          <div><div class="chead"><div class="ctitle">Retention by install date<small>spot changes after an update · days with under 5 installs skipped · newest day may not be final</small></div><div class="legend" id="retD1Leg${i}"></div></div><div class="chart" id="retD1${i}"></div></div>
+        </div>
+        <div class="ptiles">
+          ${tile("Avg daily active", isNum(p.averageDau) ? nf0.format(p.averageDau) : "—", isNum(p.peakDau) ? "peak " + nf0.format(p.peakDau) : "")}
+          ${tile("New users", int(p.newUsersInRange), "first opens in range")}
+          ${tile("Users in range", int(p.activeUsersInRange), isNum(p.stickinessPercent) ? "stickiness " + nf2.format(p.stickinessPercent) + "%" : "")}
+          ${tile("Time per user / day", mins, "engaged time")}
+        </div>
+        <div><div class="label" style="font-size:12px;color:var(--text-secondary)">Daily active users <span class="muted">(last 2 days still processing)</span></div>${dauSpark(p.daily)}</div>
+      </div>
+    </article>`;
+  }
+
+  // ------------------------------------------------------------------ Play
+  function renderPlay() {
+    const el = $("#play");
+    const d = state.play?.data;
+    if (!state.play) { el.innerHTML = `<div class="empty">Loading…</div>`; return; }
+    if (!d) { el.innerHTML = `<div class="empty">Google Play data could not be loaded.</div>`; return; }
+    if (!d.configured) { el.innerHTML = `<div class="empty">Google Play is not connected. ${esc(d.hint)}</div>`; return; }
+    if (!d.apps.length) { el.innerHTML = `<div class="empty">No apps are accessible.</div>`; return; }
+    el.innerHTML = `<div class="apps">${d.apps.map(a => appCard(a, d.thresholds)).join("")}</div>`;
+    renderInsights();
+  }
+
+  function vital(label, block, rateKey, threshold) {
+    const v = block?.summary?.rates?.[rateKey + "Percent"];
+    if (!block) return `<div class="vital"><div class="label">${esc(label)}</div><div class="value muted">—</div><div class="state">unavailable</div></div>`;
+    const bad = isNum(v) && v > threshold;
+    const spark = sparkline(block.daily || [], threshold);
+    return `<div class="vital"><div class="label">${esc(label)}</div>
+      <div class="value num">${isNum(v) ? nf2.format(v) + "%" : "—"}</div>
+      <div class="state ${isNum(v) ? (bad ? "bad" : "good") : ""}">${isNum(v) ? (bad ? `✕ Above ${threshold}% threshold` : `✓ Below ${threshold}% threshold`) : "no data"}</div>
+      ${block.range && block.range !== state.play?.dateRange ? `<div class="state muted" title="Google Play publishes vitals about 2 days late">Data for ${esc(prettyRange(block.range))} (latest available)</div>` : ""}
+      ${spark}</div>`;
+  }
+
+  function sparkline(points, threshold) {
+    const vals = points.filter(p => isNum(p.percent));
+    if (vals.length < 2) return "";
+    const W = 200, H = 36, max = Math.max(threshold * 1.25, ...vals.map(p => p.percent));
+    const x = (i) => i / (points.length - 1) * W, y = (v) => H - 2 - v / max * (H - 4);
+    let d = "", pen = false;
+    points.forEach((p, i) => { if (!isNum(p.percent)) { pen = false; return; } d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(p.percent).toFixed(1)}`; pen = true; });
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="${W}" y1="${y(threshold)}" y2="${y(threshold)}" stroke="${css("--critical")}" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/><path d="${d}" fill="none" stroke="${css("--accent")}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+
+  function appCard(a, th) {
+    const rv = a.reviews;
+    const dist = rv ? [5, 4, 3, 2, 1].map(s => {
+      const n = rv.distribution?.[s] || 0, p = rv.count ? n / rv.count * 100 : 0;
+      return `<div class="row"><span>${s}★</span><span class="track"><span class="fill" style="width:${p.toFixed(1)}%"></span></span><span class="num" style="text-align:right">${n}</span></div>`;
+    }).join("") : "";
+    const reviews = (rv?.latest || []).slice(0, 5).map(r => `<div class="review ${r.starRating && r.starRating <= 2 ? "low" : ""}"><div class="meta"><span class="stars-inline" aria-hidden="true">${"★".repeat(r.starRating || 0)}${"☆".repeat(5 - (r.starRating || 0))}</span> <b>${r.starRating || "?"}/5</b> · ${esc(r.author || "Anonymous")} · ${r.lastModified ? esc(new Date(r.lastModified).toLocaleDateString()) : ""}${r.appVersionName ? ` · v${esc(r.appVersionName)}` : ""}</div><div class="txt">${esc(r.text || "")}</div></div>`).join("");
+    const inst = a.storeInstalls?.breakdown?.[0];
+    const instHtml = !a.storeInstallsConfigured
+      ? `<span class="muted">Set PLAY_REPORTS_BUCKET to show store installs.</span>`
+      : inst?.primaryInstalls ? `<b class="num" style="font-size:18px">${nf0.format(inst.primaryInstalls.Value ?? inst.primaryInstalls.value)}</b> <span class="muted">${esc(inst.primaryInstalls.Column ?? inst.primaryInstalls.column)} · store-reported (organic + paid)</span>${a.storeInstalls.latestDateInReports ? `<div class="muted" style="font-size:12px">Reports available through ${esc(a.storeInstalls.latestDateInReports)}</div>` : ""}`
+      : `<span class="muted">No store install report for this period yet.</span>`;
+    return `<article class="app">
+      <div class="col">
+      <div><h3>${esc(a.displayName || a.packageName)}</h3><div class="pkg">${esc(a.packageName)}</div></div>
+      <div class="vitals">${vital("User-perceived crash rate", a.crash, "userPerceivedCrashRate", th.crash)}${vital("User-perceived ANR rate", a.anr, "userPerceivedAnrRate", th.anr)}</div>
+      <div><div class="label" style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">Store installs</div>${instHtml}</div>
+      </div>
+      <div class="col">
+      ${rv ? `<div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><span style="font-size:12px;color:var(--text-secondary)">Recent reviews (last 7 days, with text)</span><span><b class="num">${isNum(rv.average) ? nf2.format(rv.average) : "—"}</b> <span class="muted">avg · ${rv.count}</span></span></div><div class="stars">${dist}</div></div>${reviews}` : `<div class="muted">Reviews unavailable.</div>`}
+      </div>
+    </article>`;
+  }
+
+  // ------------------------------------------------------------------ industry benchmarks
+  const BENCH_TABS = [["you", "Your numbers vs benchmark"], ["country", "CPI by country"], ["retention", "Retention, ROAS & quality"], ["playbook", "How big studios do it"], ["sources", "Sources"]];
+  const LOWER_IS_BETTER = new Set(["cpi", "cpm", "cpc", "crash_rate", "anr_rate"]);
+  const METRIC_NAME = { cpi: "CPI", ctr: "CTR", cpm: "CPM", cpc: "CPC", ipm: "IPM", cvr: "Click → install" };
+
+  async function loadBench() {
+    try { state.bench = await api("benchmarks?v=1", false); }
+    catch { state.bench = { error: true }; }
+    const genres = [...new Set((state.bench.metrics || []).map(m => m.genre).filter(g => g && g !== "all"))].sort();
+    if (state.benchGenre !== "all" && !genres.includes(state.benchGenre)) state.benchGenre = "all";
+    $("#benchGenre").innerHTML = `<option value="all">All games</option>` + genres.map(g => `<option value="${esc(g)}" ${g === state.benchGenre ? "selected" : ""}>${esc(g[0].toUpperCase() + g.slice(1))}</option>`).join("");
+    $("#benchOs").value = state.benchOs;
+    renderBench();
+  }
+
+  const srcOf = (id) => (state.bench?.sources || []).find(s => s.id === id);
+  function srcLink(id, period) {
+    const s = srcOf(id);
+    if (!s) return "";
+    const label = `${esc(s.publisher)}${s.title ? `, ${esc(s.title)}` : ""}${period ? ` · ${esc(period)}` : s.year ? ` (${esc(s.year)})` : ""}`;
+    return s.url && /^https:\/\//.test(s.url) ? `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${label}</a>` : label;
+  }
+
+  function fmtBench(v, unit) {
+    if (!isNum(v)) return "—";
+    if (unit === "USD") return money(v, "USD", { raw: true });
+    if (unit === "%") return (Number.isInteger(v) ? nf0 : nf2).format(v) + "%";
+    if (unit === "x") return nf2.format(v) + "×";
+    if (unit === "days") return nf0.format(v) + " days";
+    return (Number.isInteger(v) ? nf0 : nf2).format(v) + (unit ? " " + unit : "");
+  }
+
+  /** Best benchmark row for a metric: exact genre/OS/platform/country beats "all", mismatches are excluded. */
+  function pickBench(metric, { genre = state.benchGenre, os = state.benchOs, platform = null, country = null, category = null } = {}) {
+    let best = null, bestScore = -1;
+    for (const m of state.bench?.metrics || []) {
+      if (m.metric !== metric || !isNum(m.value) && !isNum(m.low)) continue;
+      if (category && m.category !== category) continue;
+      let s = 0;
+      const mg = m.genre || "all", mo = m.os || "all", mp = m.platform || null;
+      if (genre !== "all" && mg === genre) s += 8; else if (mg !== "all") continue;
+      if (os !== "all" && mo === os) s += 4; else if (mo !== "all" && os !== "all") continue; else if (mo !== "all") s -= 1;
+      if (platform && mp === platform) s += 2; else if (mp && mp !== platform) continue;
+      if (country) { if ((m.countries || []).includes(country)) s += 16; else continue; }
+      else if (m.countries && m.countries.length) continue;
+      if (s > bestScore) { best = m; bestScore = s; }
+    }
+    return best;
+  }
+
+  function verdict(metric, you, b) {
+    const lowerBetter = b.better ? b.better === "lower" : LOWER_IS_BETTER.has(metric);
+    let lo = b.low, hi = b.high;
+    if (!isNum(lo) || !isNum(hi)) { lo = b.value * 0.9; hi = b.value * 1.1; }
+    if (you >= lo && you <= hi) return ["mid", "● In typical range"];
+    const better = lowerBetter ? you < lo : you > hi;
+    const ref = isNum(b.value) ? b.value : (lo + hi) / 2;
+    let size = "";
+    if (ref > 0 && you > 0) {
+      const ratio = you / ref;
+      const x1 = (v) => (Math.round(v * 10) / 10).toLocaleString(undefined, { maximumFractionDigits: 1 });
+      size = ratio >= 2 ? `${x1(ratio)}× benchmark` : ratio <= 0.5 ? `${x1(1 / ratio)}× lower` : `${ratio > 1 ? "+" : "−"}${nf0.format(Math.abs(ratio - 1) * 100)}%`;
+    }
+    return better ? ["good", `▲ Better · ${size}`] : ["bad", `▼ Worse · ${size}`];
+  }
+
+  const srcIndex = (id) => (state.bench?.sources || []).findIndex(s => s.id === id) + 1;
+  function fn(id) {
+    const s = srcOf(id), n = srcIndex(id);
+    return s ? `<sup class="fn"><a href="#benchCard" data-src="${esc(id)}" title="${esc(`${s.publisher}, ${s.title}`)}">${n}</a></sup>` : "";
+  }
+
+  function bullet(you, b, colorVar) {
+    const vals = [you, b.value, b.low, b.high].filter(isNum);
+    const max = Math.max(...vals) * 1.15 || 1;
+    const p = (v) => Math.min(100, v / max * 100).toFixed(2) + "%";
+    const rng = isNum(b.low) && isNum(b.high) ? `<span class="rng" style="left:${p(b.low)};width:calc(${p(b.high)} - ${p(b.low)})"></span>` : "";
+    const med = isNum(b.value) ? `<span class="med" style="left:${p(b.value)}" title="Benchmark ${esc(fmtBench(b.value, b.unit))}"></span>` : "";
+    const me = isNum(you) ? `<span class="you" style="left:${p(you)};background:${colorVar}" title="You"></span>` : "";
+    return `<div class="bullet" aria-hidden="true"><span class="axis"></span>${rng}${med}${me}</div>`;
+  }
+
+  function benchYou() {
+    const totals = (state.overview?.data?.totals || []).filter(t => t.currency === state.currency).sort(byPlatform);
+    const cur = state.currency;
+    const usd = cur === "USD";
+    const out = [];
+    if (!state.overview) return `<div class="bench-grid cmpg">${`<div><span class="sk" style="width:30%"></span><span class="sk" style="margin-top:12px"></span><span class="sk" style="margin-top:8px;width:80%"></span></div>`.repeat(3)}</div>`;
+    if (!totals.length) return `<div class="empty">No ad delivery in this period to compare yet. The benchmark values are still listed under the other tabs.</div>`;
+    if (!usd) out.push(`<div class="banner info" style="margin-bottom:12px"><span aria-hidden="true">ℹ</span><div>Benchmarks are in <b>USD</b> and your selected currency is <b>${esc(cur)}</b>, so money metrics (CPI, CPM, CPC) aren't compared. Rates (CTR, IPM, click → install) are compared below.</div></div>`);
+    const metrics = [["cpi", true], ["cpm", true], ["cpc", true], ["ctr", false], ["ipm", false], ["cvr", false]];
+    const groups = [];
+    for (const [metric, isMoney] of metrics) {
+      if (isMoney && !usd) continue;
+      const rows = [];
+      for (const t of totals) {
+        const you = metric === "ipm" ? ipmOf(t)
+          : metric === "cvr" ? (t.clicks > 0 && isNum(t.installs) ? t.installs / t.clicks * 100 : null)
+          : t[metric];
+        const b = pickBench(metric, { platform: t.platform });
+        if (!b) continue;
+        const color = css(SERIES_VAR[t.platform] || "--accent");
+        const yv = metric === "ctr" || metric === "cvr" ? pct(you) : metric === "ipm" ? (isNum(you) ? nf2.format(you) : NA) : money(you, cur);
+        const [cls, txt] = isNum(you) ? verdict(metric, you, b) : ["mid", "No data yet"];
+        const ref = isNum(b.low) && isNum(b.high) ? `typical ${fmtBench(b.low, b.unit)}–${fmtBench(b.high, b.unit)}` : `benchmark ${fmtBench(b.value, b.unit)}`;
+        rows.push(`<div class="cmp-row">
+          <span class="lbl"><i class="sw ${esc(t.platform)}"></i>${esc(PLATFORM[t.platform])}</span>
+          ${bullet(you, b, color)}
+          <span class="pill ${cls}">${esc(txt)}</span>
+          <div class="cmp-meta" title="${esc(b.segment || "")}">You <b>${yv}</b> · ${esc(ref)}${fn(b.source)}</div>
+        </div>`);
+      }
+      if (rows.length) groups.push(`<div><h3 class="bench-h">${esc(METRIC_NAME[metric])} <small>${LOWER_IS_BETTER.has(metric) ? "lower is better" : "higher is better"}</small></h3><div class="cmp">${rows.join("")}</div></div>`);
+    }
+    out.push(groups.length ? `<div class="bench-grid cmpg">${groups.join("")}</div>` : `<div class="empty">No matching benchmarks for this genre and OS. Try "All games".</div>`);
+    out.push(`<details class="how"><summary>How to read this</summary><p>Bar: shaded band = typical range, thin line = benchmark, dot = you. Small numbers link to the source. Benchmarks are industry-wide figures for comparison, not targets for your game, and different reports measure differently, so treat gaps under about 20% as noise. The CPI benchmark here is a global all-games average; if most of your spend is in the US or Europe, the <b>CPI by country</b> tab is a fairer comparison.</p></details>`);
+    return out.join("");
+  }
+
+  function benchCountry() {
+    const rows = (state.countries?.data || []).filter(r => r.currency === "USD");
+    const nonUsd = (state.countries?.data || []).some(r => r.currency !== "USD");
+    const lines = [...rows].sort((a, b) => (b.spend || 0) - (a.spend || 0)).slice(0, 40).map(r => {
+      const b = pickBench("cpi", { country: r.country, genre: "all", os: "all" });
+      const you = r.cpi;
+      const [cls, txt] = b && isNum(you) ? verdict("cpi", you, b) : ["mid", ""];
+      const bcell = b ? `<td class="n">${esc(fmtBench(b.value, b.unit))}</td><td class="muted" style="white-space:normal;font-size:12px">${esc(b.regionName || b.segment || "")} · ${srcLink(b.source, b.period)}</td>`
+        : `<td class="n">${NA}</td><td class="muted" style="font-size:12px">No published benchmark found</td>`;
+      return `<tr><td><b>${esc(r.countryName || r.country)}</b> <span class="muted">${esc(r.country)}</span></td>
+        <td><span class="plat"><i class="sw ${esc(r.platform)}"></i>${esc(PLATFORM[r.platform] || r.platform)}</span></td>
+        <td class="n">${money(you, "USD")}</td>${bcell}
+        <td>${txt ? `<span class="pill ${cls}">${esc(txt)}</span>` : `<span class="muted">${b ? "no installs" : "—"}</span>`}</td></tr>`;
+    });
+    const yours = lines.length
+      ? `<div class="table-wrap"><table class="compact"><thead><tr><th>Country</th><th>Platform</th><th class="n">Your CPI</th><th class="n">Benchmark CPI</th><th>Region · source</th><th>Verdict</th></tr></thead><tbody>${lines.join("")}</tbody></table></div>`
+      : `<div class="empty">${state.countries ? "No USD country data for this period to compare." : "Loading…"}</div>`;
+    const regional = (state.bench?.metrics || []).filter(m => m.metric === "cpi" && (m.region && m.region !== "global"));
+    return `${nonUsd ? `<p class="muted" style="font-size:12px;margin:0 0 8px">Only USD accounts are compared; benchmark CPIs are in USD.</p>` : ""}${yours}
+      <div style="margin-top:16px">${benchTable("Regional CPI benchmarks (all games)", [...(state.bench?.metrics || []).filter(m => m.id === "cpi-global"), ...regional],
+        "No verified public CPI benchmark exists for Pakistan, the Philippines, India or Southeast Asia; those countries show no benchmark rather than a guess.")}</div>`;
+  }
+
+  function benchTable(title, rows, note = "") {
+    if (!rows.length) return "";
+    return `<div><h3 class="bench-h">${esc(title)}</h3><div class="table-wrap"><table class="compact"><thead><tr><th>Metric</th><th>Segment</th><th class="n">Value</th><th>Source</th></tr></thead><tbody>${rows.map(m =>
+      `<tr><td>${esc(m.label || m.metric)}</td><td style="white-space:normal">${esc(m.segment || "")}</td><td class="n"><b>${esc(fmtBench(m.value, m.unit))}</b>${isNum(m.low) ? `<div class="muted" style="font-size:11px">${esc(fmtBench(m.low, m.unit))}–${esc(fmtBench(m.high, m.unit))}</div>` : ""}</td><td style="white-space:normal;font-size:12px">${srcLink(m.source, m.period)}${m.note ? `<div class="muted">${esc(m.note)}</div>` : ""}</td></tr>`).join("")}</tbody></table></div>${note ? `<p class="muted" style="font-size:12px;margin:6px 0 0">${note}</p>` : ""}</div>`;
+  }
+
+  function benchRetention() {
+    const all = state.bench?.metrics || [];
+    const g = state.benchGenre;
+    const forGenre = (m) => g === "all" || !m.genre || m.genre === "all" || m.genre === g;
+    const ret = all.filter(m => m.category === "retention" && forGenre(m));
+    const pivot = {};
+    for (const m of ret) {
+      const k = m.segment || m.genre || "All";
+      (pivot[k] ??= { seg: k, source: m.source, period: m.period });
+      pivot[k][m.metric] = m;
+    }
+    const pv = Object.values(pivot);
+    const retHtml = pv.length ? `<div><h3 class="bench-h">Retention <small>share of new players who return on day N</small></h3><div class="table-wrap"><table class="compact"><thead><tr><th>Segment</th><th class="n">Day 1</th><th class="n">Day 7</th><th class="n">Day 30</th><th>Source</th></tr></thead><tbody>${pv.map(p =>
+      `<tr><td style="white-space:normal">${esc(p.seg)}</td>${["d1", "d7", "d30"].map(k => `<td class="n">${p[k] ? esc(fmtBench(p[k].value, p[k].unit)) : NA}</td>`).join("")}<td style="white-space:normal;font-size:12px">${srcLink(p.source, p.period)}</td></tr>`).join("")}</tbody></table></div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">Your own retention needs an analytics source (Firebase / GA4 is on the roadmap).</p></div>` : "";
+    return `<div style="display:grid;gap:24px">${retHtml}
+      ${benchTable("ROAS & payback", all.filter(m => m.category === "roas" && forGenre(m)))}
+      ${benchTable("Store & app quality", all.filter(m => m.category === "quality"))}
+      ${benchTable("Where big budgets go", all.filter(m => m.category === "channels"))}
+    </div>`;
+  }
+
+  function benchPlaybook() {
+    const items = state.bench?.playbook || [];
+    if (!items.length) return `<div class="empty">No playbook entries.</div>`;
+    return `<div class="playbook">${items.map(p => `<article class="play-item">
+      <span><span class="tag">${esc(p.theme || "Practice")}</span></span>
+      <h4>${esc(p.practice)}</h4>
+      ${p.action ? `<p><b>Try:</b> ${esc(p.action)}</p>` : ""}
+      ${p.studios ? `<div class="who">${esc(p.studios)}</div>` : ""}
+      <details><summary>Evidence</summary><p>${esc(p.detail)}</p><div class="who">${srcLink(p.source, p.period)}</div></details>
+    </article>`).join("")}</div>`;
+  }
+
+  function benchSources() {
+    const s = state.bench?.sources || [];
+    return `<ol class="sources">${s.map(x => `<li>${srcLink(x.id)}${x.note ? ` <span class="muted">· ${esc(x.note)}</span>` : ""}</li>`).join("")}</ol>
+      <p class="muted" style="font-size:12px">${esc(state.bench?.disclaimer || "")}</p>`;
+  }
+
+  function renderBench() {
+    const el = $("#bench");
+    if (!state.bench) { el.innerHTML = `<div class="empty">Loading…</div>`; return; }
+    if (state.bench.error) { el.innerHTML = `<div class="empty">Benchmarks could not be loaded.</div>`; return; }
+    $("#benchSub").textContent = `published mobile-game benchmarks · snapshot ${state.bench.asOf || ""} · USD`;
+    const tab = state.benchTab;
+    const tabs = `<div class="seg bench-tabs" id="benchTabs" role="group" aria-label="Benchmark view">${BENCH_TABS.map(([k, l]) => `<button type="button" data-t="${k}" aria-pressed="${k === tab}">${esc(l)}</button>`).join("")}</div>`;
+    const body = tab === "country" ? benchCountry() : tab === "retention" ? benchRetention() : tab === "playbook" ? benchPlaybook() : tab === "sources" ? benchSources() : benchYou();
+    el.innerHTML = tabs + body;
+  }
+
+  $("#bench").addEventListener("click", (e) => {
+    if (e.target.closest("a[data-src]")) { e.preventDefault(); state.benchTab = "sources"; renderBench(); $("#benchCard").scrollIntoView(); return; }
+    const t = e.target.closest("button[data-t]")?.dataset.t; if (!t) return;
+    state.benchTab = t; store.set("benchTab", t); renderBench();
+  });
+  $("#benchGenre").addEventListener("change", (e) => { state.benchGenre = e.target.value; store.set("benchGenre", state.benchGenre); renderBench(); });
+  $("#benchOs").addEventListener("change", (e) => { state.benchOs = e.target.value; store.set("benchOs", state.benchOs); renderBench(); });
+
+
+  // ------------------------------------------------------------------ settings (connections)
+  const LINK = (href, text) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${text} ↗</a>`;
+  const SETUP = {
+    meta: {
+      name: "Meta Ads", logo: "f", sub: "Facebook & Instagram ads · read-only (ads_read)",
+      steps: [
+        `Create a <b>Business</b> app and add the <b>Marketing API</b> product. ${LINK("https://developers.facebook.com/apps", "Meta for Developers")}`,
+        `In Business Settings, open <b>Users → System users</b> and add one (Employee role). ${LINK("https://business.facebook.com/settings/system-users", "System users")}`,
+        `Click <b>Assign assets → Ad accounts</b>, choose your account and allow <b>View performance</b> only.`,
+        `Click <b>Generate new token</b>, pick your app and tick only <b>ads_read</b>. Copy the token.`,
+        `Paste it below, press <b>Save</b>. The connection is tested automatically.`,
+      ],
+    },
+    google_ads: {
+      name: "Google Ads", logo: "G", sub: "Search, YouTube & App campaigns · read-only",
+      steps: [
+        `In Google Cloud, create a project and enable the <b>Google Ads API</b>. ${LINK("https://console.cloud.google.com/apis/library/googleads.googleapis.com", "Enable API")}`,
+        `Open <b>Google Ads API → Access levels</b> and <b>Apply for Explorer access</b> (usually approved in minutes). Test access only works with test accounts. ${LINK("https://console.cloud.google.com/google/ads-apis/overview", "Access levels")}`,
+        `Create a <b>service account</b> (no roles needed), then <b>Keys → Add key → JSON</b>. ${LINK("https://console.cloud.google.com/iam-admin/serviceaccounts", "Service accounts")}`,
+        `In Google Ads, open <b>Admin → Access and security → Users → +</b>, paste the service account email and choose <b>Read only</b>. ${LINK("https://ads.google.com/aw/accountaccess/users", "Access and security")}`,
+        `Choose the JSON key below and press <b>Save</b>. No developer token is needed any more.`,
+      ],
+    },
+    ga4: {
+      name: "Google Analytics 4 / Firebase", logo: "A", sub: "Active users, retention, revenue · read-only",
+      steps: [
+        `In the Google Cloud project of your service account, enable the <b>Google Analytics Data API</b> and the <b>Google Analytics Admin API</b>. ${LINK("https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com", "Data API")} ${LINK("https://console.cloud.google.com/apis/library/analyticsadmin.googleapis.com", "Admin API")}`,
+        `Easiest: leave the key empty to <b>reuse the Google Play service account</b>. Or choose a separate .json key below and press <b>Save</b>.`,
+        `In Google Analytics (Firebase → Project settings → Integrations → Google Analytics), open <b>Admin → Property access management → +</b>, paste the service account email shown here and choose <b>Viewer</b>. ${LINK("https://analytics.google.com/analytics/web/#/admin", "GA4 Admin")}`,
+        `Optional: paste the <b>property ID</b> (Admin → Property details, digits only) to limit access to one game. Then press <b>Test connection</b>.`,
+      ],
+    },
+    google_play: {
+      name: "Google Play Console", logo: "▶", sub: "Android vitals, reviews, store installs · read-only",
+      steps: [
+        `In Google Cloud, enable the <b>Google Play Android Developer API</b> and the <b>Play Developer Reporting API</b>. ${LINK("https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com", "Android Developer API")} ${LINK("https://console.cloud.google.com/apis/library/playdeveloperreporting.googleapis.com", "Reporting API")}`,
+        `Create a <b>service account</b>, then <b>Keys → Add key → JSON</b>. A .json file downloads. ${LINK("https://console.cloud.google.com/iam-admin/serviceaccounts", "Service accounts")}`,
+        `Choose that file below and press <b>Save</b>. The service account email appears here.`,
+        `In Play Console, <b>Users and permissions → Invite new user</b>: paste that email and grant <b>View app information and download bulk reports</b> and <b>View app quality information</b>. It can take up to 24 hours. ${LINK("https://play.google.com/console/developers/users-and-permissions", "Play Console users")}`,
+        `Optional, for store installs: <b>Download reports → Copy Cloud Storage URI</b> and paste it as the reports bucket.`,
+      ],
+    },
+  };
+  let csrf = null, setState = null;
+
+  async function loadSettings() {
+    try {
+      const res = await fetch("/api/settings", { credentials: "same-origin" });
+      if (res.status === 401) { location.reload(); return; }
+      const d = await res.json();
+      csrf = d.csrf; setState = d.settings;
+    } catch (e) { setState = { error: String(e) }; }
+    renderSettings();
+  }
+
+  async function post(path, body) {
+    if (!csrf) await loadSettings();
+    const res = await fetch(`/api/settings${path}`, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Meeza-Csrf": csrf }, body: JSON.stringify(body || {}) });
+    if (res.status === 401) { location.reload(); return { ok: false, message: "Session expired." }; }
+    try { return await res.json(); } catch { return { ok: false, message: `Request failed (HTTP ${res.status}).` }; }
+  }
+
+  function setMsg(form, kind, html) {
+    const el = form.querySelector(".set-msg");
+    el.className = `set-msg show ${kind}`; el.innerHTML = html;
+  }
+
+  function fieldHtml(f) {
+    const id = `f_${f.key}`;
+    const badge = f.lockedByEnvironment ? `<span class="src">set by environment variable</span>`
+      : f.isSet ? `<span class="src saved">${f.source === "appsettings" ? "from appsettings.json" : "✓ saved"}</span>` : "";
+    const ph = f.secret ? (f.isSet ? "Saved · leave blank to keep it" : "Paste here") : "";
+    const input = f.multiline
+      ? `<textarea id="${id}" name="${esc(f.key)}" spellcheck="false" placeholder="${esc(f.isSet ? "Saved · choose a new file or paste to replace" : "Paste the JSON key, or choose the file below")}" ${f.lockedByEnvironment ? "disabled" : ""}></textarea>
+         <span><input type="file" accept=".json,application/json" class="filebtn" data-for="${id}" aria-label="Choose the JSON key file" ${f.lockedByEnvironment ? "disabled" : ""}></span>`
+      : `<input id="${id}" name="${esc(f.key)}" type="${f.secret ? "password" : "text"}" autocomplete="off" spellcheck="false" value="${f.secret ? "" : esc(f.value || "")}" data-orig="${f.secret ? "" : esc(f.value || "")}" placeholder="${esc(ph)}" ${f.lockedByEnvironment ? "disabled" : ""}>`;
+    return `<div class="fld"><label for="${id}">${esc(f.label)}${f.required ? `<span class="req" title="Required">*</span>` : ""}${badge}</label>${input}<span class="help">${esc(f.help)}</span></div>`;
+  }
+
+  function renderSettings() {
+    const host = $("#setCards"), ban = $("#setBanner");
+    if (!setState) { host.innerHTML = `<div class="card"><div class="empty">Loading…</div></div>`; return; }
+    if (setState.error) { host.innerHTML = `<div class="card"><div class="empty">Settings could not be loaded.</div></div>`; return; }
+    const banners = [];
+    if (!setState.canSave) banners.push(`<div class="banner err"><span aria-hidden="true">⚠</span><div>Saving here needs the encrypted store, which is only available on Windows. On this system set the values as environment variables instead.</div></div>`);
+    if (setState.demo) banners.push(`<div class="banner info"><span aria-hidden="true">ℹ</span><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span>The dashboard is showing <b>demo data</b>. After connecting, switch to your real numbers.</span><button class="btn primary" type="button" id="goLive">Show my live data</button></div></div>`);
+    ban.innerHTML = banners.join("");
+    host.innerHTML = setState.platforms.map(p => {
+      const meta = SETUP[p.platform];
+      const fields = p.fields.map(fieldHtml).join("");
+      const sa = p.platform === "google_play" && p.serviceAccountEmail ? `<div class="sa-email">Invite this email in Play Console: <b>${esc(p.serviceAccountEmail)}</b></div>`
+        : p.platform === "ga4" && p.serviceAccountEmail ? `<div class="sa-email">Add this email as a Viewer in GA4 → Property access management: <b>${esc(p.serviceAccountEmail)}</b></div>` : "";
+      const gsign = p.platform === "google_ads" ? `<button type="button" class="btn" data-do="signin">Sign in with Google</button>` : "";
+      return `<article class="card setc" data-p="${p.platform}">
+        <div class="setc-hd"><span class="plogo ${p.platform}" aria-hidden="true">${meta.logo}</span><div><h2>${esc(meta.name)}</h2><span class="sub">${esc(meta.sub)}</span></div>
+          <span class="spill ${p.configured ? "ok" : "off"}">${p.configured ? "● Connected" : "○ Not connected"}</span></div>
+        <div class="setc-bd">
+          <details class="steps" ${p.configured ? "" : "open"}><summary>Setup steps (${meta.steps.length})</summary><ol>${meta.steps.map(st => `<li><span>${st}</span></li>`).join("")}</ol></details>
+          <form class="setf" data-p="${p.platform}" autocomplete="off" novalidate>
+            ${fields}${sa}
+            <div class="set-actions">
+              <button type="submit" class="btn primary" ${setState.canSave ? "" : "disabled"}>Save</button>
+              ${gsign}
+              <button type="button" class="btn" data-do="test">Test connection</button>
+              ${p.configured ? `<button type="button" class="btn ghost" data-do="disconnect">Disconnect</button>` : ""}
+            </div>
+            <div class="set-msg" aria-live="polite"></div>
+          </form>
+        </div>
+      </article>`;
+    }).join("");
+  }
+
+  async function testConnection(form) {
+    setMsg(form, "info", "Testing the connection…");
+    const r = await post(`/${form.dataset.p}/test`);
+    setMsg(form, r.ok ? "ok" : "err", `${r.ok ? "✓" : "✕"} ${esc(r.message || "")}${r.items?.length ? `<ul>${r.items.map(i => `<li>${esc(i)}</li>`).join("")}</ul>` : ""}`);
+    return r.ok;
+  }
+
+  async function afterChange(form, okText) {
+    const p = form.dataset.p;
+    await loadSettings();
+    const fresh = document.querySelector(`.setf[data-p="${p}"]`);
+    setMsg(fresh, "ok", okText);
+    const conf = setState.platforms.find(x => x.platform === p)?.configured;
+    if (conf) await testConnection(fresh);
+    if (!setState.demo) loadAll(true);
+  }
+
+  $("#setCards").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target.closest(".setf"); if (!form) return;
+    const values = {}, remove = [];
+    for (const el of form.querySelectorAll("input[name], textarea[name]")) {
+      if (el.disabled) continue;
+      const v = el.value.trim();
+      if (v) values[el.name] = v;
+      else if (el.dataset.orig) remove.push(el.name); // a visible, non-secret value was cleared
+    }
+    if (!Object.keys(values).length && !remove.length) { setMsg(form, "info", "Nothing to save: fill in at least one field."); return; }
+    const btn = form.querySelector("button[type=submit]"); btn.disabled = true;
+    setMsg(form, "info", "Saving…");
+    const r = await post(`/${form.dataset.p}`, { values, remove });
+    btn.disabled = false;
+    if (!r.ok) { setMsg(form, "err", `✕ ${esc(r.message || "Could not save.")}`); return; }
+    await afterChange(form, "✓ Saved (encrypted on this computer).");
+  });
+
+  $("#setCards").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-do]"); if (!b) return;
+    const form = b.closest(".setf"), what = b.dataset.do;
+    if (what === "test") { b.disabled = true; await testConnection(form); b.disabled = false; return; }
+    if (what === "signin") {
+      b.disabled = true;
+      setMsg(form, "info", "A Google sign-in page opened in your browser. Approve read access there, then come back to this tab. (Waiting up to 5 minutes…)");
+      const r = await post("/google_ads/signin");
+      b.disabled = false;
+      if (!r.ok) { setMsg(form, "err", `✕ ${esc(r.message || "Sign-in failed.")}`); return; }
+      await afterChange(form, "✓ Signed in with Google.");
+      return;
+    }
+    if (what === "disconnect") {
+      const p = setState.platforms.find(x => x.platform === form.dataset.p);
+      if (!confirm(`Remove the saved ${SETUP[p.platform].name} settings from this computer?`)) return;
+      const keys = p.fields.filter(f => f.source === "secret-store").map(f => f.key);
+      const r = await post(`/${p.platform}`, { values: {}, remove: keys });
+      if (!r.ok) { setMsg(form, "err", `✕ ${esc(r.message || "Could not remove.")}`); return; }
+      await loadSettings();
+      if (!setState.demo) loadAll(true);
+    }
+  });
+
+  $("#setCards").addEventListener("change", (e) => {
+    const inp = e.target.closest("input[type=file][data-for]"); if (!inp || !inp.files?.[0]) return;
+    const file = inp.files[0];
+    if (file.size > 64 * 1024) { alert("That file is too large to be a service account key."); inp.value = ""; return; }
+    const reader = new FileReader();
+    reader.onload = () => { document.getElementById(inp.dataset.for).value = String(reader.result || ""); };
+    reader.readAsText(file);
+  });
+
+  $("#setBanner").addEventListener("click", async (e) => {
+    if (e.target.id !== "goLive") return;
+    const r = await post("/mode", { demo: false });
+    if (r.ok) { location.hash = "#ovSec"; await loadSettings(); state.overview = state.countries = state.play = state.players = state.creatives = null; renderKpis(); renderInsights(); renderLab(); loadAll(true); }
+  });
+
+  function route() {
+    const settings = location.hash === "#settings";
+    document.body.classList.toggle("view-settings", settings);
+    $("#settingsBtn").setAttribute("aria-current", String(settings));
+    if (settings) { $("#statusBox").open = false; window.scrollTo(0, 0); loadSettings(); }
+  }
+  window.addEventListener("hashchange", route);
+
+  // ------------------------------------------------------------------ events
+  function pressed(groupSel, attr, value) {
+    for (const b of document.querySelectorAll(`${groupSel} button`)) b.setAttribute("aria-pressed", String(b.dataset[attr] === value));
+  }
+
+  function syncControls() {
+    pressed("#presets", "p", state.preset);
+    pressed("#platforms", "v", state.platform);
+    pressed("#levels", "l", state.level);
+    $("#customDates").hidden = state.preset !== "custom";
+    $("#auto").value = String(state.auto);
+  }
+
+  $("#presets").addEventListener("click", (e) => {
+    const p = e.target.closest("button")?.dataset.p; if (!p) return;
+    state.preset = p; syncControls();
+    if (p === "custom") {
+      if (!state.start) { const d = new Date(); state.end = localIso(d); d.setDate(d.getDate() - 13); state.start = localIso(d); }
+      $("#start").value = state.start; $("#end").value = state.end; return;
+    }
+    store.set("preset", p); state.shown = PAGE; loadAll();
+  });
+  $("#applyDates").addEventListener("click", () => {
+    state.start = $("#start").value; state.end = $("#end").value;
+    if (state.start && state.end && state.start <= state.end) { state.shown = PAGE; loadAll(); }
+  });
+  $("#platforms").addEventListener("click", (e) => {
+    const v = e.target.closest("button")?.dataset.v; if (!v) return;
+    state.platform = v; store.set("platform", v); syncControls(); loadAll();
+  });
+  $("#levels").addEventListener("click", (e) => {
+    const l = e.target.closest("button")?.dataset.l; if (!l || l === state.level) return;
+    state.level = l; store.set("level", l); state.shown = PAGE; syncControls(); loadLevel();
+  });
+  $("#currency").addEventListener("change", (e) => { state.currency = e.target.value; renderKpis(); renderInsights(); renderTrends(); renderTable(); renderLab(); renderBench(); });
+  $("#search").addEventListener("input", (e) => { state.search = e.target.value; state.shown = PAGE; renderTable(); });
+  $("#statusFilter").addEventListener("change", (e) => { state.status = e.target.value; state.shown = PAGE; renderTable(); });
+  $("#noInstalls").addEventListener("change", (e) => { state.noInstalls = e.target.checked; state.shown = PAGE; renderTable(); });
+  $("#csv").addEventListener("click", exportCsv);
+  $("#perf").addEventListener("click", (e) => {
+    const k = e.target.closest("button[data-sort]")?.dataset.sort; if (!k) return;
+    state.sort = state.sort.key === k ? { key: k, dir: -state.sort.dir } : { key: k, dir: k === "name" || k === "platform" || k === "status" || k === "cpi" || k === "cpc" || k === "cpm" ? 1 : -1 };
+    renderTable();
+  });
+  $("#perfMore").addEventListener("click", (e) => { if (e.target.id === "showMore") { state.shown += PAGE; renderTable(); } });
+  $("#countrySearch").addEventListener("input", (e) => { state.countrySearch = e.target.value; state.countryShown = 25; renderCountries(); });
+  $("#countryMore").addEventListener("click", (e) => { if (e.target.id === "countryMoreBtn") { state.countryShown += 25; renderCountries(); } });
+  $("#refresh").addEventListener("click", () => loadAll(true));
+
+  let timer = null;
+  function schedule() {
+    clearInterval(timer);
+    if (state.auto > 0) timer = setInterval(() => { if (!document.hidden) loadAll(false); }, state.auto);
+  }
+  $("#auto").addEventListener("change", (e) => { state.auto = Number(e.target.value); store.set("auto", state.auto); schedule(); });
+
+  const themes = ["soft", "light", "dark", "system"];
+  const THEME_LABEL = { soft: "◑ Soft", light: "☀ Light", dark: "☾ Dark", system: "◐ System" };
+  function applyTheme(t) {
+    if (t === "system") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+    $("#theme").title = `Theme: ${t} (click to switch)`;
+    $("#theme").textContent = THEME_LABEL[t];
+  }
+  let theme = store.get("theme3", "soft"); if (!themes.includes(theme)) theme = "soft"; applyTheme(theme);
+  $("#theme").addEventListener("click", () => {
+    theme = themes[(themes.indexOf(theme) + 1) % themes.length]; store.set("theme3", theme); applyTheme(theme);
+    renderTrends(); renderPlay(); renderPlayers(); renderBench(); renderLab(); renderKpis(); renderInsights();
+  });
+
+  let rt;
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderTrends, 150); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => { renderTrends(); renderPlay(); renderPlayers(); renderLab(); renderKpis(); renderInsights(); });
+
+  document.addEventListener("click", (e) => { const box = $("#statusBox"); if (box.open && !box.contains(e.target)) box.open = false; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#statusBox").open = false; });
+
+  // Section nav: highlight the section currently in view.
+  const navLinks = [...document.querySelectorAll("#secnav a")];
+  // The active section is the last one whose top has passed just below the sticky header.
+  let spyQueued = false;
+  function spy() {
+    spyQueued = false;
+    const line = ($("header.top").getBoundingClientRect().bottom || 0) + 24;
+    let active = navLinks[0];
+    for (const a of navLinks) { const t = document.querySelector(a.getAttribute("href")); if (t && t.getBoundingClientRect().top <= line) active = a; }
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) active = navLinks[navLinks.length - 1];
+    navLinks.forEach(a => a.setAttribute("aria-current", String(a === active)));
+  }
+  const queueSpy = () => { if (!spyQueued) { spyQueued = true; requestAnimationFrame(spy); } };
+  window.addEventListener("scroll", queueSpy, { passive: true });
+  window.addEventListener("resize", queueSpy);
+  new MutationObserver(queueSpy).observe($("#main"), { childList: true, subtree: true });
+  queueSpy();
+
+  route();
+  syncControls();
+  renderKpis(); renderInsights(); renderLab(); renderTable(); renderCountries(); renderPlay(); renderPlayers();
+  loadAll();
+  loadBench();
+  schedule();
+})();
+</script>
+</body>
+</html>

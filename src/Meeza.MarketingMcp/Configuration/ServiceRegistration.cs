@@ -1,0 +1,87 @@
+using System.Net;
+using System.Net.Http.Headers;
+using Meeza.Marketing.Analytics;
+using Meeza.Marketing.GoogleAds;
+using Meeza.Marketing.Meta;
+using Meeza.Marketing.PlayConsole;
+using Meeza.Marketing.Shared.Security;
+using Meeza.Marketing.Shared.Utilities;
+using Meeza.MarketingMcp.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace Meeza.MarketingMcp.Configuration;
+
+public static class ServiceRegistration
+{
+    public const string UserAgent = "meeza-marketing-mcp/1.0";
+
+    /// <summary>Loads appsettings.json (non-secret settings only) from the app folder and the working directory.</summary>
+    public static IConfigurationBuilder AddMeezaConfiguration(this IConfigurationBuilder builder)
+    {
+        builder.AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true, reloadOnChange: false);
+        var custom = Environment.GetEnvironmentVariable("MEEZA_CONFIG_PATH");
+        if (!string.IsNullOrWhiteSpace(custom)) builder.AddJsonFile(Path.GetFullPath(custom), optional: false, reloadOnChange: false);
+        return builder;
+    }
+
+    public static IServiceCollection AddMeezaMarketing(this IServiceCollection services)
+    {
+        services.AddSingleton<LocalSecretStore>();
+        services.AddSingleton<ISettingsResolver>(sp => new SettingsResolver(sp.GetRequiredService<IConfiguration>(), sp.GetRequiredService<LocalSecretStore>()));
+
+        services.AddSingleton(sp => MetaAdsOptions.FromSettings(sp.GetRequiredService<ISettingsResolver>()));
+        services.AddSingleton(sp => GoogleAdsOptions.FromSettings(sp.GetRequiredService<ISettingsResolver>()));
+        services.AddSingleton(sp => PlayConsoleOptions.FromSettings(sp.GetRequiredService<ISettingsResolver>()));
+        services.AddSingleton(sp => AnalyticsOptions.FromSettings(sp.GetRequiredService<ISettingsResolver>()));
+
+        // One HttpClient per platform keeps credentials and connection pools isolated between platforms.
+        services.AddSingleton(sp => new MetaAdsClient(CreateHttpClient(sp), sp.GetRequiredService<MetaAdsOptions>(), sp.GetRequiredService<ILogger<MetaAdsClient>>()));
+        services.AddSingleton(sp => new GoogleAdsClient(CreateHttpClient(sp), sp.GetRequiredService<GoogleAdsOptions>()));
+        services.AddSingleton(sp => new PlayConsoleClient(CreateHttpClient(sp), sp.GetRequiredService<PlayConsoleOptions>()));
+        services.AddSingleton(sp => new AnalyticsClient(CreateHttpClient(sp), sp.GetRequiredService<AnalyticsOptions>()));
+
+        services.AddSingleton<MetaAdsPlatform>();
+        services.AddSingleton<GoogleAdsPlatform>();
+        services.AddSingleton<PlayConsoleService>();
+        services.AddSingleton<AnalyticsService>();
+        services.AddSingleton<PlatformRegistry>();
+        services.AddSingleton<Dashboard.DashboardData>();
+        services.AddSingleton<Dashboard.DashboardServer>();
+        services.AddSingleton<ConnectionSettings>();
+
+        // Persistent store, projects and synchronization.
+        services.AddSingleton(_ => new Storage.MarketingDb(Storage.MarketingDb.DefaultPath));
+        services.AddSingleton<Storage.ProjectStore>();
+        services.AddSingleton<Storage.FactStore>();
+        services.AddSingleton<Storage.SyncStore>();
+        services.AddSingleton<Sync.IIntegrationSyncer, Sync.GoogleAdsSyncer>();
+        services.AddSingleton<Sync.IIntegrationSyncer, Sync.MetaSyncer>();
+        services.AddSingleton<Sync.IIntegrationSyncer, Sync.Ga4Syncer>();
+        services.AddSingleton<Sync.SyncEngine>();
+        services.AddSingleton<Sync.SyncScheduler>();
+        services.AddSingleton<Intelligence.ProjectData>();
+        services.AddSingleton<Intelligence.AnalyticsEngine>();
+        services.AddSingleton<Ai.ClaudeGateway>();
+        services.AddSingleton<Ai.AnalystService>();
+        services.AddSingleton<Ai.ResearchService>();
+        return services;
+    }
+
+    private static HttpClient CreateHttpClient(IServiceProvider sp)
+    {
+        var retry = new RetryHandler(sp.GetRequiredService<ILogger<RetryHandler>>())
+        {
+            InnerHandler = new SocketsHttpHandler
+            {
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                AutomaticDecompression = DecompressionMethods.All,
+            },
+        };
+        var client = new HttpClient(retry) { Timeout = TimeSpan.FromSeconds(120) };
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("meeza-marketing-mcp", "1.0"));
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        return client;
+    }
+}
