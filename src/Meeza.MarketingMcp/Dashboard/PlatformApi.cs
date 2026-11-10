@@ -125,7 +125,7 @@ public static class PlatformApi
             {
                 tasks = tasks.List(pid), counts = tasks.Counts(pid),
                 check = latest is null ? null : new { analyzedAt = latest.AnalyzedAt, range = $"{latest.RangeStart}..{latest.RangeEnd}" },
-                windowDays = ProblemCheck.WindowDays,
+                windowDays = ProblemCheck.WindowDays, confirmDays = ProblemCheck.ConfirmDays,
             });
         }));
         // Tasks are written by the check only; the one change a person can make is a task's status.

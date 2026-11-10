@@ -201,6 +201,64 @@ public class ProblemCheckTests
     }
 
     [Fact]
+    public void A_problem_that_is_only_in_older_data_gets_no_task()
+    {
+        // Gapsy, Nov 2026: testers before launch dragged the 30-day tutorial completion below 60%, while real players
+        // in the last week completed it fine. That must not become a task.
+        using var t = new TestDb();
+        var p = t.Projects.Create(new Project { Name = "G", TimeZone = "UTC", Connections = [TestDb.Ga4Conn] });
+        var today = TimeZones.Today("UTC");
+        var scope = new Dictionary<string, object?> { ["project_id"] = p.Id, ["property_id"] = "123456789" };
+        Ga4EventRow[] Day(DateOnly d, long opens, long begin, long done) =>
+            [new(d, "first_open", opens, opens), new(d, "tutorial_begin", begin, begin), new(d, "tutorial_complete", done, done)];
+        t.Facts.ReplaceWindow("ga4_events_daily", scope, "date", today.AddDays(-30), today,
+            Day(today.AddDays(-20), 100, 50, 15).Concat(Day(today.AddDays(-3), 100, 95, 80)).ToArray());
+        var (check, tasks) = Build(t);
+
+        check.Run(p.Id, "manual");
+        var report = check.Latest(p.Id);
+        Assert.DoesNotContain(report.Problems, x => x.Finding.GetProperty("id").GetString() == "funnel-tutorial");
+        var unconfirmed = report.Unconfirmed.Single(x => x.GetProperty("id").GetString() == "funnel-tutorial");
+        Assert.Contains("Not confirmed: the last 7 days", unconfirmed.GetProperty("validated").GetString());
+        Assert.DoesNotContain(tasks.List(p.Id), x => x.FindingKey == "funnel-tutorial");
+
+        // The same problem in the recent days too: confirmed, and the task says how.
+        t.Facts.ReplaceWindow("ga4_events_daily", scope, "date", today.AddDays(-30), today,
+            Day(today.AddDays(-20), 100, 50, 15).Concat(Day(today.AddDays(-3), 100, 60, 30)).ToArray());
+        check.Run(p.Id, "manual");
+        var task = tasks.List(p.Id).Single(x => x.FindingKey == "funnel-tutorial");
+        Assert.Contains("Confirmed: also found in the last 7 days", task.Finding!.Value.GetProperty("validated").GetString());
+        Assert.Contains(task.Finding.Value.GetProperty("evidence").EnumerateArray(), e => e.GetProperty("source").GetString() == "Validation");
+    }
+
+    [Fact]
+    public void Missing_revenue_is_confirmed_by_the_recent_state_not_by_the_rules_minimum_sample()
+    {
+        // Gapsy: 336 user-days in 30 days (the rule needs 300), 191 in the last 7, revenue zero throughout. The rule
+        // cannot fire on 7 days, but the problem is plainly still there.
+        using var t = new TestDb();
+        var p = t.Projects.Create(new Project { Name = "G", TimeZone = "UTC", Connections = [TestDb.Ga4Conn] });
+        var today = TimeZones.Today("UTC");
+        var scope = new Dictionary<string, object?> { ["project_id"] = p.Id, ["property_id"] = "123456789" };
+        var rows = Enumerable.Range(1, 30).Select(i => new Ga4DailyRow(today.AddDays(-i), 12, 2, null, null, null, null, 0, 0, 0, 0, "USD")).ToArray(); // 360 user-days, 84 in the last 7
+        t.Facts.ReplaceWindow("ga4_daily", scope, "date", today.AddDays(-30), today, rows);
+        var (check, tasks) = Build(t);
+        check.Run(p.Id, "manual");
+        var problem = check.Latest(p.Id).Problems.Single(x => x.Finding.GetProperty("id").GetString() == "revenue-missing");
+        Assert.True(problem.Finding.GetProperty("confirmed").GetBoolean());
+        Assert.Contains("still no revenue across 84 user-days", problem.Finding.GetProperty("validated").GetString());
+        Assert.Single(tasks.List(p.Id), x => x.FindingKey == "revenue-missing");
+    }
+
+    [Fact]
+    public void D7_problems_are_confirmed_on_cohorts_old_enough_to_have_a_day_7()
+    {
+        Assert.Equal(7, ProblemCheck.ConfirmDaysFor("cpi-up"));
+        Assert.Equal(14, ProblemCheck.ConfirmDaysFor("retention-d7"));
+        Assert.Equal(14, ProblemCheck.ConfirmDaysFor("roas-d7"));
+    }
+
+    [Fact]
     public async Task After_a_sync_a_source_that_failed_is_reported_instead_of_shown_as_syncing()
     {
         using var t = new TestDb();

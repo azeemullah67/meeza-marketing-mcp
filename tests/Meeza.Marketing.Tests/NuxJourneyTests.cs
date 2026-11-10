@@ -76,6 +76,31 @@ public class NuxJourneyTests
         Assert.Equal("tutorial_step_3", drop.GetProperty("to").GetString());
     }
 
+    [Theory]
+    // Gapsy, Oct-Nov 2026: most players are lost before the tutorial even starts.
+    [InlineData(242, 185, 146, 117, "never reach tutorial_begin")]
+    // Players start, then stop inside the generic tutorial_step: ask for step numbers.
+    [InlineData(240, 230, 120, 110, "tutorial_step has no step number")]
+    public void Tutorial_advice_points_at_the_step_where_most_players_are_lost(long opens, long begin, long step, long complete, string expected)
+    {
+        using var t = new TestDb();
+        var p = t.Projects.Create(new Project { Name = "Gapsy", TimeZone = "UTC", Connections = [TestDb.Ga4Conn] });
+        var today = TimeZones.Today("UTC");
+        var f = new Filters(today.AddDays(-7), today.AddDays(-1));
+        var d = today.AddDays(-2);
+        var scope = new Dictionary<string, object?> { ["project_id"] = p.Id, ["property_id"] = "123456789" };
+        t.Facts.ReplaceWindow("ga4_events_daily", scope, "date", f.Start, f.End, new[]
+        {
+            new Ga4EventRow(d, "first_open", opens, opens), new Ga4EventRow(d, "tutorial_begin", begin, begin),
+            new Ga4EventRow(d, "tutorial_step", step, step), new Ga4EventRow(d, "tutorial_complete", complete, complete),
+        });
+        var e = new AnalyticsEngine(t.Projects, t.Syncs, t.Data, new SyncEngine(t.Projects, t.Syncs, [], NullLogger<SyncEngine>.Instance));
+        var finding = e.Findings(p.Id, f).Single(x => x.Id == "funnel-tutorial");
+        Assert.Contains(expected, finding.Action);
+        Assert.DoesNotContain("Shorten", finding.Action);
+        Assert.Equal(4, finding.Evidence.Count); // three step losses + completion
+    }
+
     [Fact]
     public void Missing_journey_event_is_unavailable_with_a_fix()
     {

@@ -771,7 +771,7 @@ a.pill:hover { border-color: currentColor; }
     return `<dl>${f.segment ? `<dt>Affected</dt><dd>${esc(f.segment)}</dd>` : ""}${f.comparisonPeriod ? `<dt>Period</dt><dd>${esc(rng(f.comparisonPeriod.split(" vs ")[0]))}${f.comparisonPeriod.includes(" vs ") ? ` vs ${esc(rng(f.comparisonPeriod.split(" vs ")[1]))}` : ""}</dd>` : ""}
       <dt>Evidence</dt><dd>${f.evidence.map(e => `<div>${esc(e.metric)}: <b>${esc(e.value)}</b>${e.comparison ? ` <span class="muted">(${esc(e.comparison)})</span>` : ""} <span class="muted">· ${esc(e.source)}</span></div>`).join("")}</dd>
       <dt>Likely cause</dt><dd>${esc(f.hypothesis)}</dd><dt>Do this</dt><dd class="act">${esc(f.action)}</dd>
-      ${f.expectedImpact ? `<dt>Expected impact</dt><dd>${esc(f.expectedImpact)}</dd>` : ""}<dt>Check it worked</dt><dd><ul style="margin:0;padding-left:18px">${f.validation.map(v => `<li>${esc(v)}</li>`).join("")}</ul></dd></dl>`;
+      ${f.expectedImpact ? `<dt>Expected impact</dt><dd>${esc(f.expectedImpact)}</dd>` : ""}${f.validated ? `<dt>Validated</dt><dd>${esc(f.validated)}</dd>` : ""}<dt>Check it worked</dt><dd><ul style="margin:0;padding-left:18px">${f.validation.map(v => `<li>${esc(v)}</li>`).join("")}</ul></dd></dl>`;
   }
   function attentionCard(st) {
     const cite = citeFn(st);
@@ -797,12 +797,13 @@ a.pill:hover { border-color: currentColor; }
       ? `<b>Not checked yet</b><span>Every sync ends with a check of the last ${c.windowDays} days. Each problem it finds is listed here and added to <a href="#/tasks">Tasks</a>.</span><button class="btn primary" type="button" data-check style="margin-top:8px">Check now</button>`
       : `<b>Nothing to check yet</b><span>Connect a data source in <a href="#/settings">Project settings</a>. Every sync then ends with a check of the last ${c.windowDays} days.</span>`}</div></section>`;
     const rows = c.problems.map(x => { const f = x.finding; return `<div class="attn"><span class="sev ${esc(f.severity)}">${esc(f.severity)}</span><div><b>${esc(f.problem)}</b>${taskPill(x.task)}<div class="n">${esc(f.action)}</div><details><summary>Evidence and details ▸</summary><div class="fb">${findingBody(f)}</div></details></div></div>`; });
-    const opp = c.opportunities;
+    const opp = c.opportunities, unc = c.unconfirmed || [];
     return `<section class="card chk mt-l" id="chk-card" tabindex="-1">
       <div class="hd"><h2>${title}</h2><span class="sub">${esc(rng(c.range))} · checked ${esc(ago(c.analyzedAt))}</span><a href="#/tasks" class="sub">${c.tasks.active ? plural(c.tasks.active, "open task", "open tasks") : "Tasks"} →</a></div>
       ${rows.length ? rows.slice(0, 6).join("") + (rows.length > 6 ? `<details><summary class="btn ghost" style="margin-top:8px">Show all (${rows.length})</summary>${rows.slice(6).join("")}</details>` : "")
-        : `<div class="empty bare"><b>No problems found</b>The check found nothing wrong in ${esc(rng(c.range))}.</div>`}
-      <div class="foot">${opp.length ? `<details class="opp"><summary>${plural(opp.length, "opportunity", "opportunities")} ▸</summary><ul>${opp.map(f => `<li><b>${esc(f.problem)}</b>: ${esc(f.action)}</li>`).join("")}</ul></details>` : ""}<span class="grow"></span><span>Runs after every sync. Each problem becomes a task and closes itself once the problem is gone.</span><button class="btn" type="button" data-check>Check again</button></div>
+        : `<div class="empty bare"><b>No confirmed problems</b>Nothing wrong in ${esc(rng(c.range))} is still showing in the last ${c.confirmDays} days.</div>`}
+      ${unc.length ? `<details class="opp" style="margin-top:12px"><summary>${plural(unc.length, "problem", "problems")} not confirmed in the last ${c.confirmDays} days · no task ▸</summary><ul>${unc.map(f => `<li><b>${esc(f.problem)}</b>: ${esc(f.validated || "")}</li>`).join("")}</ul></details>` : ""}
+      <div class="foot">${opp.length ? `<details class="opp"><summary>${plural(opp.length, "opportunity", "opportunities")} ▸</summary><ul>${opp.map(f => `<li><b>${esc(f.problem)}</b>: ${esc(f.action)}</li>`).join("")}</ul></details>` : ""}<span class="grow"></span><span>Runs after every sync. A problem becomes a task only when it also shows in the last ${c.confirmDays} days; the task closes itself once the problem is gone.</span><button class="btn" type="button" data-check>Check again</button></div>
     </section>`;
   }
   async function runCheck(btn) {
@@ -1254,7 +1255,7 @@ a.pill:hover { border-color: currentColor; }
       ? `<div class="card empty"><b>No tasks yet</b><span>${sources ? `Every sync ends with a check of the last ${d.windowDays} days. Each action it finds lands here.` : `Connect a data source in <a href="#/settings">Project settings</a>: every sync then checks the last ${d.windowDays} days and adds a task for each action needed.`}</span>${sources && !d.check ? '<button class="btn primary" type="button" data-check style="margin-top:8px">Check now</button>' : ""}</div>`
       : filter === "active" ? `<div class="card empty"><b>Nothing to do</b>Every task is done or dismissed.</div>`
       : `<div class="card empty"><b>Nothing here</b>No ${filter === "all" ? "" : filter + " "}tasks.</div>`;
-    view.innerHTML = head("Tasks", `<span>Actions from the check of the last ${d.windowDays} days, which runs after every sync. Update each task's status as you work; a task closes itself once its problem is gone.</span>${d.check ? `<span class="rchip">Last check ${esc(ago(d.check.analyzedAt))}</span>` : ""}`,
+    view.innerHTML = head("Tasks", `<span>Actions from the check of the last ${d.windowDays} days, which runs after every sync. Each one is confirmed in the most recent days before it is added. Update each task's status as you work; a task closes itself once its problem is gone.</span>${d.check ? `<span class="rchip">Last check ${esc(ago(d.check.analyzedAt))}</span>` : ""}`,
         sources ? `<button class="btn" type="button" data-check>${icon("sync")}Check again</button>` : "")
       + `<div class="seg" id="tkFilter" role="group" aria-label="Which tasks to show" style="margin:0 0 12px">${[["active", "To do", groups.active.length], ["done", "Done", groups.done.length], ["dismissed", "Dismissed", groups.dismissed.length], ["all", "All", d.tasks.length]].map(([v, n, c]) => `<button type="button" data-f="${v}" class="${v === filter ? "on" : ""}" aria-pressed="${v === filter}">${n} (${c})</button>`).join("")}</div>
         <div id="tkList">${groups[filter].map(t => taskCard(t, today)).join("") || empty}</div>`;

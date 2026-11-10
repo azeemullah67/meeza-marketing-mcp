@@ -21,6 +21,14 @@ public sealed record Finding
     public required string Action { get; init; }
     public string? ExpectedImpact { get; init; }
     public required IReadOnlyList<string> Validation { get; init; }
+    /// <summary>
+    /// Set by the 30-day check: true when the same problem is also found in the most recent days, so it is current
+    /// and not an effect of older data (a test period before launch, an old build, one bad week). Only confirmed
+    /// problems become tasks. Null when the finding was not validated (findings outside the check).
+    /// </summary>
+    public bool? Confirmed { get; init; }
+    /// <summary>How the problem was validated, in plain words.</summary>
+    public string? Validated { get; init; }
 }
 
 /// <summary>
@@ -205,23 +213,48 @@ public sealed partial class AnalyticsEngine
         {
             var rate = Math.Round(done * 100m / opens, 1);
             decimal? prevRate = prevEvents.TryGetValue("first_open", out var po) && po >= 30 && prevEvents.TryGetValue(tutorial, out var pd) ? Math.Round(pd * 100m / po, 1) : null;
-            var begin = events.GetValueOrDefault("tutorial_begin");
             if (rate < 60 || prevRate is not null && rate < prevRate * 0.85m)
+            {
+                // Walk the onboarding steps in order and find where the most new players are lost, so the advice
+                // points at that step instead of assuming the tutorial is too long.
+                var path = (p.NuxEvents is { Count: > 0 } nux
+                        ? nux.Select(s => (Event: s.Event, Label: s.Label ?? s.Event))
+                        : new[] { ("tutorial_begin", "tutorial_begin"), ("tutorial_step", "tutorial_step"), (tutorial, tutorial) })
+                    .Where(s => events.ContainsKey(s.Event)).DistinctBy(s => s.Event).ToList();
+                if (!path.Any(s => s.Event == tutorial)) path.Add((tutorial, tutorial));
+                var losses = new List<(string From, string To, long Lost, long Base)>();
+                var (prevLabel, prevUsers) = ("first_open", opens);
+                foreach (var s in path)
+                {
+                    var u = events[s.Event];
+                    losses.Add((prevLabel, s.Label, Math.Max(0, prevUsers - u), prevUsers));
+                    (prevLabel, prevUsers) = (s.Label, u);
+                }
+                var worst = losses.MaxBy(l => l.Lost);
+                var worstPct = worst.Base > 0 ? Math.Round(worst.Lost * 100m / worst.Base, 0) : 0;
+                var beforeTutorial = worst.From == "first_open";
+                var genericStep = !beforeTutorial && (worst.To == "tutorial_step" || worst.From == "tutorial_step") && p.NuxEvents is not { Count: > 0 };
                 list.Add(new Finding
                 {
                     Id = "funnel-tutorial", Category = "funnel", Severity = rate < 40 ? "high" : "medium",
                     Problem = $"Only {rate}% of new players complete the tutorial", ComparisonPeriod = prevRate is null ? f.Range : cmp,
-                    Evidence =
-                    [
-                        new("first_open users", opens.ToString("N0"), null, "GA4"),
-                        new("tutorial_begin users", begin == 0 ? "n/a" : begin.ToString("N0"), begin > 0 ? $"{begin * 100m / opens:0.#}% of first opens" : null, "GA4"),
-                        new($"{tutorial} users", done.ToString("N0"), prevRate is null ? null : $"previous rate {prevRate}%", "GA4"),
-                    ],
-                    Hypothesis = begin > 0 && begin < opens * 0.8m ? "Many players never start the tutorial: loading, a permission prompt, or a confusing first screen." : "Players start but abandon the tutorial: it may be too long or unclear.",
-                    Confidence = "medium", Action = "Shorten the tutorial, make the first win faster, and check tutorial_step events for the step where players leave.",
-                    ExpectedImpact = "Tutorial completion is usually the largest lever on D1 retention.",
-                    Validation = ["Compare completion and D1 for the next app version (Retention → platform/app version).", "Track tutorial_step drop-off per step."],
+                    Evidence = losses.Select(l => new Evidence($"{l.From} → {l.To}", $"{l.Lost:N0} players lost",
+                            l.Base > 0 ? $"{l.Lost * 100m / l.Base:0.#}% of {l.Base:N0}" : null, "GA4"))
+                        .Append(new Evidence($"{tutorial} users", done.ToString("N0"), prevRate is null ? $"{rate}% of first opens" : $"{rate}% of first opens, previous {prevRate}%", "GA4"))
+                        .ToArray(),
+                    Hypothesis = beforeTutorial
+                        ? $"The largest loss is before the tutorial starts: {worst.Lost:N0} of {opens:N0} new players ({worstPct}%) open the game but never reach {worst.To}. The tutorial's length cannot cause that; something before it does (loading time, a crash, or a screen or prompt shown first)."
+                        : $"The largest loss is between {worst.From} and {worst.To}: {worst.Lost:N0} of {worst.Base:N0} players ({worstPct}%) stop there.",
+                    Confidence = opens >= 200 ? "medium" : "low",
+                    Action = beforeTutorial
+                        ? $"Find out why {worstPct}% of new players never reach {worst.To}: check loading time and crashes on first launch, and remove or delay anything shown before it (permission or consent prompts, splash screens)."
+                        : genericStep
+                            ? $"Find the exact tutorial step where players stop between {worst.From} and {worst.To}: tutorial_step has no step number, so log the step number as a parameter or add each step as its own event in Project settings → first-time player journey."
+                            : $"Look at what players must do between {worst.From} and {worst.To} and make that step clearer or easier; {worstPct}% of players stop there.",
+                    ExpectedImpact = "Recovering players at the biggest drop is the largest single lever on D1 retention.",
+                    Validation = ["Compare the same steps for the next app version (Funnel page).", "D1 retention of the next cohorts (Retention → app version)."],
                 });
+            }
         }
 
         // ---- revenue
