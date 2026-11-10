@@ -1064,26 +1064,30 @@ public class PlatformApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Tasks_can_be_added_changed_and_removed_and_stay_inside_their_project()
+    public async Task Tasks_come_only_from_the_check_and_people_can_only_change_their_status()
     {
-        async Task<string> NewProject(string name) =>
-            (await (await Post("/api/v2/projects", new { name, syncNow = false })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
-        var a = await NewProject("Game A");
-        var b = await NewProject("Game B");
+        async Task<string> NewProject(string name, bool connected) =>
+            (await (await Post("/api/v2/projects", connected
+                ? new { name, timeZone = "UTC", syncNow = false, connections = new[] { new { integration = "google_ads", externalId = "1234567890" } } }
+                : (object)new { name, syncNow = false })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        var a = await NewProject("Game A", connected: true);
+        var b = await NewProject("Game B", connected: false);
 
-        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{a}/tasks", new { title = " " })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{a}/tasks", new { title = "X", priority = "urgent" })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{a}/tasks", new { title = "X", dueDate = "tomorrow" })).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await Post($"/api/v2/projects/{a}/tasks", new { title = "X" }, csrf: false)).StatusCode);
+        // There is no way to add or delete a task by hand.
+        Assert.False((await Post($"/api/v2/projects/{a}/tasks", new { title = "Mine" })).IsSuccessStatusCode);
+        Assert.Equal(0, (await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{a}/tasks")).GetProperty("tasks").GetArrayLength());
 
-        var created = await Post($"/api/v2/projects/{a}/tasks", new { title = " Record new video ads ", details = "Three hooks", priority = "high", dueDate = "2026-12-01" });
-        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
-        var task = await created.Content.ReadFromJsonAsync<JsonElement>();
-        var tid = task.GetProperty("id").GetInt64();
-        Assert.Equal(("Record new video ads", "open", "manual", "high"),
-            (task.GetProperty("title").GetString(), task.GetProperty("status").GetString(), task.GetProperty("source").GetString(), task.GetProperty("priority").GetString()));
-
+        await Post($"/api/v2/projects/{a}/check", new { });
         var list = await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{a}/tasks");
+        var task = list.GetProperty("tasks").EnumerateArray().Single();
+        var tid = task.GetProperty("id").GetInt64();
+        var details = task.GetProperty("details").GetString();
+        Assert.Equal("analysis", task.GetProperty("source").GetString());
+        Assert.False((await Post($"/api/v2/projects/{a}/tasks/{tid}/delete", new { })).IsSuccessStatusCode);
+        // Only the status can change: other fields are not accepted, and the status is required.
+        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{a}/tasks/{tid}", new { title = "Mine" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Post($"/api/v2/projects/{a}/tasks/{tid}", new { status = "done" }, csrf: false)).StatusCode);
+
         Assert.Equal(1, list.GetProperty("tasks").GetArrayLength());
         Assert.Equal(1, list.GetProperty("counts").GetProperty("active").GetInt32());
         var summaries = (await _http.GetFromJsonAsync<JsonElement>("/api/v2/projects")).GetProperty("projects").EnumerateArray()
@@ -1093,15 +1097,12 @@ public class PlatformApiTests : IAsyncLifetime
         // Another project can neither see nor change it.
         Assert.Equal(0, (await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{b}/tasks")).GetProperty("tasks").GetArrayLength());
         Assert.Equal(HttpStatusCode.NotFound, (await Post($"/api/v2/projects/{b}/tasks/{tid}", new { status = "done" })).StatusCode);
-        Assert.False((await (await Post($"/api/v2/projects/{b}/tasks/{tid}/delete", new { })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("deleted").GetBoolean());
 
         // A status change leaves the rest of the task alone.
         var done = await (await Post($"/api/v2/projects/{a}/tasks/{tid}", new { status = "done" })).Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(("done", "Three hooks", "user"), (done.GetProperty("status").GetString(), done.GetProperty("details").GetString(), done.GetProperty("closedBy").GetString()));
+        Assert.Equal(("done", details, "user"), (done.GetProperty("status").GetString(), done.GetProperty("details").GetString(), done.GetProperty("closedBy").GetString()));
         Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{a}/tasks/{tid}", new { status = "archived" })).StatusCode);
-
-        Assert.True((await (await Post($"/api/v2/projects/{a}/tasks/{tid}/delete", new { })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("deleted").GetBoolean());
-        Assert.Equal(0, (await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{a}/tasks")).GetProperty("tasks").GetArrayLength());
+        Assert.Equal(1, (await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{a}/tasks")).GetProperty("tasks").GetArrayLength());
     }
 
     [Fact]
@@ -1131,9 +1132,7 @@ public class PlatformApiTests : IAsyncLifetime
         Assert.Equal(("analysis", "high", true), (task.GetProperty("source").GetString(), task.GetProperty("priority").GetString(), task.GetProperty("detected").GetBoolean()));
         Assert.NotEmpty(task.GetProperty("finding").GetProperty("evidence").EnumerateArray());
 
-        // The check owns the task's text, and a task for a live problem is dismissed rather than deleted.
-        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{id}/tasks/{tid}", new { title = "Mine" })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{id}/tasks/{tid}/delete", new { })).StatusCode);
+        // A dismissed task stays dismissed while the problem lasts, and no duplicate appears.
         Assert.Equal(HttpStatusCode.OK, (await Post($"/api/v2/projects/{id}/tasks/{tid}", new { status = "dismissed" })).StatusCode);
         var again = await (await Post($"/api/v2/projects/{id}/check", new { })).Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("dismissed", again.GetProperty("problems").EnumerateArray().Single().GetProperty("task").GetProperty("status").GetString());

@@ -43,7 +43,8 @@ public sealed class ProblemCheck(AnalyticsEngine engine, ProjectStore projects, 
         var window = Window(AnalyticsEngine.Today(p));
         var findings = engine.Findings(projectId, window, afterSync);
         var seeds = findings.Where(IsProblem)
-            .Select(f => new TaskSeed(f.Id, Cut(f.Problem, 200), Cut(f.Action, 4000), Priority(f.Severity), f.Category, Json.Serialize(f)))
+            // The task is the action to take; the problem it fixes is its "why".
+            .Select(f => new TaskSeed(f.Id, Cut(f.Action, 200), Cut(f.Problem, 4000), Priority(f.Severity), f.Category, Json.Serialize(f)))
             .ToArray();
         var changes = tasks.ApplyFindings(projectId, seeds);
         tasks.SaveCheck(projectId, trigger, window.Start, window.End, Json.Serialize(findings));

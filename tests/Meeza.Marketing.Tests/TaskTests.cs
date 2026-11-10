@@ -11,38 +11,26 @@ public class TaskStoreTests
         new(key, title, "Check the campaigns.", priority, "acquisition", """{"id":"x","evidence":[]}""");
 
     [Fact]
-    public void Manual_tasks_are_validated_edited_closed_and_deleted()
+    public void Only_the_status_of_a_task_can_be_changed()
     {
         using var t = new TestDb();
         var tasks = new TaskStore(t.Db);
         var p = t.NewProject();
+        tasks.ApplyFindings(p.Id, [Seed("cpi-up")]);
+        var task = tasks.List(p.Id).Single();
 
-        Assert.Throws<ArgumentException>(() => tasks.Create(p.Id, "  ", null, null, null));
-        Assert.Throws<ArgumentException>(() => tasks.Create(p.Id, "X", null, "urgent", null));
-        Assert.Throws<ArgumentException>(() => tasks.Create(p.Id, "X", null, null, "tomorrow"));
-        Assert.Throws<ArgumentException>(() => tasks.Create(p.Id, new string('x', 201), null, null, null));
+        Assert.Throws<ArgumentException>(() => tasks.SetStatus(p.Id, task.Id, "archived"));
+        Assert.Throws<ArgumentException>(() => tasks.SetStatus(p.Id, task.Id, null));
 
-        var task = tasks.Create(p.Id, "  Record new video ads ", " Three hooks ", null, "2026-12-01");
-        Assert.Equal(("Record new video ads", "Three hooks", "medium", "open", "manual", "2026-12-01"),
-            (task.Title, task.Details, task.Priority, task.Status, task.Source, task.DueDate));
-
-        // Null leaves a field alone; an empty string clears details and the due date.
-        var edited = tasks.Update(p.Id, task.Id, new TaskPatch { Priority = "high", Details = "", DueDate = "" });
-        Assert.Equal(("Record new video ads", null, "high", null), (edited.Title, edited.Details, edited.Priority, edited.DueDate));
-        Assert.Throws<ArgumentException>(() => tasks.Update(p.Id, task.Id, new TaskPatch { Status = "archived" }));
-
-        var done = tasks.Update(p.Id, task.Id, new TaskPatch { Status = "done" });
-        Assert.Equal(("done", "user"), (done.Status, done.ClosedBy));
+        var done = tasks.SetStatus(p.Id, task.Id, " Done ");
+        Assert.Equal(("done", "user", task.Title, task.Priority), (done.Status, done.ClosedBy, done.Title, done.Priority));
         Assert.NotNull(done.CompletedAt);
         Assert.Equal(new TaskCounts(0, 0, 1, 0), tasks.Counts(p.Id));
 
-        var reopened = tasks.Update(p.Id, task.Id, new TaskPatch { Status = "in_progress" });
+        var reopened = tasks.SetStatus(p.Id, task.Id, "in_progress");
         Assert.Equal(("in_progress", null, null), (reopened.Status, reopened.ClosedBy, reopened.CompletedAt));
         Assert.Equal(1, tasks.ActiveCounts()[p.Id]);
-
-        Assert.True(tasks.Delete(p.Id, task.Id));
-        Assert.False(tasks.Delete(p.Id, task.Id));
-        Assert.Throws<KeyNotFoundException>(() => tasks.Update(p.Id, task.Id, new TaskPatch { Status = "done" }));
+        Assert.Throws<KeyNotFoundException>(() => tasks.SetStatus(p.Id, 9999, "done"));
     }
 
     [Fact]
@@ -52,13 +40,12 @@ public class TaskStoreTests
         var tasks = new TaskStore(t.Db);
         var a = t.NewProject("A");
         var b = t.NewProject("B");
-        var task = tasks.Create(a.Id, "Only in A", null, null, null);
-        tasks.ApplyFindings(a.Id, [Seed("cpi-up")]);
+        tasks.ApplyFindings(a.Id, [Seed("cpi-up"), Seed("wasted-spend")]);
+        var task = tasks.List(a.Id).First();
 
         Assert.Empty(tasks.List(b.Id));
         Assert.Null(tasks.Get(b.Id, task.Id));
-        Assert.Throws<KeyNotFoundException>(() => tasks.Update(b.Id, task.Id, new TaskPatch { Status = "done" }));
-        Assert.False(tasks.Delete(b.Id, task.Id));
+        Assert.Throws<KeyNotFoundException>(() => tasks.SetStatus(b.Id, task.Id, "done"));
         Assert.Equal(2, tasks.List(a.Id).Count);
 
         t.Projects.Delete(a.Id);
@@ -81,7 +68,7 @@ public class TaskStoreTests
         Assert.NotNull(task.Finding);
 
         // Still found an hour later: the same task, refreshed. Work in progress is not reset.
-        tasks.Update(p.Id, task.Id, new TaskPatch { Status = "in_progress" });
+        tasks.SetStatus(p.Id, task.Id, "in_progress");
         Assert.Equal(new TaskChanges(0, 1, 0, 0), tasks.ApplyFindings(p.Id, [Seed("cpi-up", "CPI increased 55%", "medium")], t0.AddHours(1)));
         task = tasks.List(p.Id).Single();
         Assert.Equal(("in_progress", "CPI increased 55%", "medium"), (task.Status, task.Title, task.Priority));
@@ -113,23 +100,19 @@ public class TaskStoreTests
         Assert.Equal(2, tasks.List(p.Id).Count);
         var task = tasks.List(p.Id).Single(x => x.FindingKey == "wasted-spend");
 
-        // The check owns the text of its tasks; the user owns the status.
-        Assert.Throws<InvalidOperationException>(() => tasks.Update(p.Id, task.Id, new TaskPatch { Title = "Mine now" }));
-        tasks.Update(p.Id, task.Id, new TaskPatch { Status = "dismissed", DueDate = "2026-12-01" });
+        tasks.SetStatus(p.Id, task.Id, "dismissed");
 
-        // Still found: no new task, still dismissed, and it cannot be deleted (it would come straight back).
+        // Still found: no new task, and it stays dismissed.
         Assert.Equal(new TaskChanges(0, 2, 0, 0), tasks.ApplyFindings(p.Id, [Seed("wasted-spend"), Seed("cpi-up")], t0.AddHours(1)));
         task = tasks.Get(p.Id, task.Id)!;
-        Assert.Equal(("dismissed", "user", true, "2026-12-01"), (task.Status, task.ClosedBy, task.Detected, task.DueDate));
-        Assert.Throws<InvalidOperationException>(() => tasks.Delete(p.Id, task.Id));
+        Assert.Equal(("dismissed", "user", true), (task.Status, task.ClosedBy, task.Detected));
 
-        // Gone: nothing to close (the user already did), and now it can be deleted.
+        // Gone: nothing to close (the user already did).
         Assert.Equal(new TaskChanges(0, 1, 0, 0), tasks.ApplyFindings(p.Id, [Seed("cpi-up")], t0.AddHours(2)));
         Assert.False(tasks.Get(p.Id, task.Id)!.Detected);
 
         // Back after the user dismissed the earlier occurrence: it is a new problem, so it is raised again.
         Assert.Equal(1, tasks.ApplyFindings(p.Id, [Seed("wasted-spend"), Seed("cpi-up")], t0.AddHours(3)).Created);
-        Assert.True(tasks.Delete(p.Id, task.Id));
     }
 
     [Fact]
@@ -201,8 +184,8 @@ public class ProblemCheckTests
         // The task carries the problem, the action and the evidence it is based on.
         var task = tasks.Get(p.Id, wasted.Task.Id)!;
         Assert.Equal(("analysis", "high", "budget", true), (task.Source, task.Priority, task.Category, task.Detected));
-        Assert.Contains("spent without tracked installs", task.Title);
-        Assert.Contains("install tracking", task.Details);
+        Assert.Contains("install tracking", task.Title);             // the task is the action...
+        Assert.Contains("spent without tracked installs", task.Details); // ...and the problem is why
         Assert.Contains(task.Finding!.Value.GetProperty("evidence").EnumerateArray(), e => e.GetProperty("metric").GetString() == "Leaky campaign");
 
         // The next sync finds the same problems: no duplicates.
@@ -236,7 +219,8 @@ public class ProblemCheckTests
         Assert.Equal("data_quality", problem.Finding.GetProperty("category").GetString());
         var task = tasks.List(p.Id).Single();
         Assert.Equal(("open", "high"), (task.Status, task.Priority));
-        Assert.Contains("Google Ads data is missing", task.Title);
+        Assert.Contains("Fix the Google Ads connection", task.Title);
+        Assert.Contains("Google Ads data is missing", task.Details);
     }
 }
 

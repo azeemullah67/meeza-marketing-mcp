@@ -24,19 +24,10 @@ public sealed record TaskCounts(int Open, int InProgress, int Done, int Dismisse
 
 public sealed record ProjectCheck(string ProjectId, string AnalyzedAt, string Trigger, string RangeStart, string RangeEnd, string FindingsJson);
 
-/// <summary>Changes to a task. Null leaves a field as it is; an empty string clears details / due date.</summary>
-public sealed class TaskPatch
-{
-    public string? Title { get; set; }
-    public string? Details { get; set; }
-    public string? Priority { get; set; }
-    public string? Status { get; set; }
-    public string? DueDate { get; set; }
-}
-
 /// <summary>
-/// Project to-do lists and the latest automatic check. Tasks come from two places: the user writes them, or the check
-/// that runs after every sync turns each problem it finds into one. A problem owns at most one live task: the check
+/// Project to-do lists and the latest automatic check. Tasks are written only by the check that runs after every
+/// sync: each problem it finds becomes the action to take. People update a task's status, nothing else.
+/// A problem owns at most one live task: the check
 /// keeps it up to date while the problem lasts and closes it when the problem is gone, so the list never fills with
 /// duplicates of the same finding. Every query is scoped by project id.
 /// </summary>
@@ -86,59 +77,27 @@ public sealed class TaskStore(MarketingDb db)
             .ToDictionary(x => x.Item1, x => x.Item2);
     }
 
-    /// <summary>Adds a task written by the user.</summary>
-    public ProjectTask Create(string projectId, string? title, string? details, string? priority, string? dueDate)
-    {
-        var t = CleanTitle(title);
-        var d = CleanDetails(details);
-        var p = CleanPriority(priority) ?? "medium";
-        var due = CleanDue(dueDate);
-        using var c = db.Open();
-        var now = Db.Now();
-        c.Exec("""
-            INSERT INTO tasks(project_id, title, details, status, priority, source, detected, due_date, created_at, updated_at)
-            VALUES(@projectId, @t, @d, 'open', @p, 'manual', 0, @due, @now, @now)
-            """, new { projectId, t, d, p, due, now });
-        return Require(projectId, c.Scalar<long>("SELECT last_insert_rowid()"));
-    }
-
-    public ProjectTask Update(string projectId, long id, TaskPatch patch)
+    /// <summary>
+    /// The only change a person can make to a task: its status. Tasks are written by the analysis, which owns their
+    /// text and priority; there is no way to add, edit or delete one by hand.
+    /// </summary>
+    public ProjectTask SetStatus(string projectId, long id, string? status)
     {
         var current = Require(projectId, id);
-        var fromCheck = current.Source == "analysis";
-        if (fromCheck && (patch.Title is not null || patch.Details is not null || patch.Priority is not null))
-            throw new InvalidOperationException("This task is written by the automatic check, which keeps its text and priority up to date. You can change its status or due date.");
-
-        var title = patch.Title is null ? current.Title : CleanTitle(patch.Title);
-        var details = patch.Details is null ? current.Details : CleanDetails(patch.Details);
-        var priority = CleanPriority(patch.Priority) ?? current.Priority;
-        var due = patch.DueDate is null ? current.DueDate : CleanDue(patch.DueDate);
-        var status = patch.Status is null ? current.Status : patch.Status.Trim().ToLowerInvariant();
-        if (!Statuses.Contains(status)) throw new ArgumentException($"Status must be one of: {string.Join(", ", Statuses)}.");
+        var s = (status ?? "").Trim().ToLowerInvariant();
+        if (!Statuses.Contains(s)) throw new ArgumentException($"Status must be one of: {string.Join(", ", Statuses)}.");
+        if (s == current.Status) return current;
 
         var now = Db.Now();
-        var closed = status is "done" or "dismissed";
+        var closed = s is "done" or "dismissed";
         var wasClosed = current.Status is "done" or "dismissed";
-        // Closing stamps who closed it and when; reopening clears both. A status that does not cross that line keeps them.
+        // Closing stamps who closed it and when; reopening clears both. Moving between done and dismissed keeps the date.
         var completedAt = closed ? (wasClosed ? current.CompletedAt : now) : null;
-        var closedBy = closed ? (wasClosed && status == current.Status ? current.ClosedBy : "user") : null;
+        var closedBy = closed ? "user" : null;
         using var c = db.Open();
-        c.Exec("""
-            UPDATE tasks SET title=@title, details=@details, priority=@priority, status=@status, due_date=@due,
-                             completed_at=@completedAt, closed_by=@closedBy, updated_at=@now
-            WHERE project_id=@projectId AND id=@id
-            """, new { title, details, priority, status, due, completedAt, closedBy, now, projectId, id });
+        c.Exec("UPDATE tasks SET status=@s, completed_at=@completedAt, closed_by=@closedBy, updated_at=@now WHERE project_id=@projectId AND id=@id",
+            new { s, completedAt, closedBy, now, projectId, id });
         return Require(projectId, id);
-    }
-
-    public bool Delete(string projectId, long id)
-    {
-        var t = Get(projectId, id);
-        if (t is null) return false;
-        if (t.Source == "analysis" && t.Detected)
-            throw new InvalidOperationException("The latest check still finds this problem, so a deleted task would come straight back. Dismiss it instead.");
-        using var c = db.Open();
-        return c.Exec("DELETE FROM tasks WHERE project_id=@projectId AND id=@id", new { projectId, id }) > 0;
     }
 
     /// <summary>
@@ -242,13 +201,6 @@ public sealed class TaskStore(MarketingDb db)
         if (string.IsNullOrWhiteSpace(priority)) return null;
         var p = priority.Trim().ToLowerInvariant();
         return Priorities.Contains(p) ? p : throw new ArgumentException($"Priority must be one of: {string.Join(", ", Priorities)}.");
-    }
-
-    private static string? CleanDue(string? due)
-    {
-        if (string.IsNullOrWhiteSpace(due)) return null;
-        return DateOnly.TryParseExact(due.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
-            ? Db.Iso(d) : throw new ArgumentException("Due date must be a date (yyyy-MM-dd).");
     }
 
     private static ProjectTask Map(SqliteDataReader r) => new(

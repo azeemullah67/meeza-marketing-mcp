@@ -128,18 +128,12 @@ public static class PlatformApi
                 windowDays = ProblemCheck.WindowDays,
             });
         }));
-        app.MapPost(g + "/projects/{id}/tasks", (string id, HttpRequest req) => Handle(async () =>
-        {
-            var t = await Body<TaskInput>(req);
-            return tasks.Create(projects.Require(id).Id, t.Title, t.Details, t.Priority, t.DueDate);
-        }));
+        // Tasks are written by the check only; the one change a person can make is a task's status.
         app.MapPost(g + "/projects/{id}/tasks/{taskId:long}", (string id, long taskId, HttpRequest req) => Handle(async () =>
         {
             var t = await Body<TaskInput>(req);
-            return tasks.Update(projects.Require(id).Id, taskId, new TaskPatch { Title = t.Title, Details = t.Details, Priority = t.Priority, Status = t.Status, DueDate = t.DueDate });
+            return tasks.SetStatus(projects.Require(id).Id, taskId, t.Status);
         }));
-        app.MapPost(g + "/projects/{id}/tasks/{taskId:long}/delete", (string id, long taskId) =>
-            Handle(() => Task.FromResult<object>(new { deleted = tasks.Delete(projects.Require(id).Id, taskId) })));
 
         // ---- KPI targets & benchmarks
         app.MapGet(g + "/projects/{id}/targets", (string id) => Handle(() => Task.FromResult<object>(new
@@ -385,14 +379,10 @@ public static class PlatformApi
         public string? Notes { get; set; }
     }
 
-    /// <summary>New task, or changes to one: a missing field is left as it is, an empty details / dueDate clears it.</summary>
+    /// <summary>Status change for a task: open, in_progress, done or dismissed.</summary>
     public sealed class TaskInput
     {
-        public string? Title { get; set; }
-        public string? Details { get; set; }
-        public string? Priority { get; set; }
         public string? Status { get; set; }
-        public string? DueDate { get; set; }
     }
 
     public sealed class SyncRequest { public string? Integration { get; set; } }

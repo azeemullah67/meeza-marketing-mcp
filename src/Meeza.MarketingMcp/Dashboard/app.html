@@ -816,23 +816,20 @@ a.pill:hover { border-color: currentColor; }
   }
   const todayIso = () => { const d = new Date(), z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };
   function taskCard(t, today) {
-    const closed = t.status === "done" || t.status === "dismissed", auto = t.source === "analysis";
-    const late = !closed && t.dueDate && t.dueDate < today;
+    const closed = t.status === "done" || t.status === "dismissed";
     const meta = [
-      auto ? "Found by the 30-day check" : "Added by you",
-      `created ${esc(ago(t.createdAt))}`,
-      t.dueDate ? `<span class="${late ? "late" : ""}">${late ? "overdue · " : ""}due ${esc(dshort(t.dueDate))}</span>` : "",
-      !closed ? "" : t.closedBy === "analysis" ? `closed by the check ${esc(ago(t.completedAt))}: the problem is no longer found` : `${t.status} ${esc(ago(t.completedAt))}`,
-      auto && closed && t.detected ? '<span class="late">the latest check still finds this problem</span>' : "",
+      `found ${esc(ago(t.createdAt))}`,
+      !closed ? "" : t.closedBy === "analysis" ? `closed by the check ${esc(ago(t.completedAt))}: the problem is no longer found` : `${t.status === "done" ? "marked done" : "dismissed"} ${esc(ago(t.completedAt))}`,
+      closed && t.detected ? '<span class="late">the latest check still finds this problem</span>' : "",
     ].filter(Boolean);
     return `<div class="task ${closed ? "closed" : ""}">
       <button type="button" class="tk ${t.status === "done" ? "on" : ""}" data-done="${t.id}" aria-pressed="${t.status === "done"}" aria-label="${t.status === "done" ? "Reopen" : "Mark as done"}: ${esc(t.title)}" title="${t.status === "done" ? "Reopen" : "Mark as done"}">${icon("check")}</button>
       <div><div class="tt"><span class="sev ${esc(t.priority)}">${esc(t.priority)}</span><b>${esc(t.title)}</b>${t.status === "in_progress" ? '<span class="pill estimate">In progress</span>' : ""}${t.category ? `<span class="pill">${esc(t.category.replace(/_/g, " "))}</span>` : ""}</div>
-        ${t.details ? `<div class="n">${esc(t.details)}</div>` : ""}
+        ${t.details ? `<div class="n"><b>Why:</b> ${esc(t.details)}</div>` : ""}
         ${t.finding ? `<details><summary>Evidence and details ▸</summary><div class="fb">${findingBody(t.finding)}</div></details>` : ""}
         <div class="meta">${meta.map(m => `<span>${m}</span>`).join("")}</div></div>
       <div class="acts"><select data-st="${t.id}" aria-label="Status of ${esc(t.title)}">${[["open", "Open"], ["in_progress", "In progress"], ["done", "Done"], ["dismissed", "Dismissed"]].map(([v, n]) => `<option value="${v}" ${t.status === v ? "selected" : ""}>${n}</option>`).join("")}</select>
-        ${auto ? "" : `<button class="btn" type="button" data-edit="${t.id}">Edit</button>`}${!auto || !t.detected ? `<button class="btn danger" type="button" data-del="${t.id}">Delete</button>` : ""}</div>
+</div>
     </div>`;
   }
 
@@ -1252,21 +1249,14 @@ a.pill:hover { border-color: currentColor; }
       all: d.tasks,
     };
     const filter = groups[S.taskFilter] ? S.taskFilter : "active";
-    const editing = S.taskEdit ? d.tasks.find(t => t.id === S.taskEdit && t.source === "manual") : null;
     const sources = p?.status.length || 0, today = todayIso();
     const empty = d.tasks.length === 0
-      ? `<div class="card empty"><b>No tasks yet</b><span>${sources ? `Every sync ends with a check of the last ${d.windowDays} days, and each problem it finds lands here.` : `Connect a data source in <a href="#/settings">Project settings</a>: every sync then checks the last ${d.windowDays} days and adds a task for each problem.`} You can also add your own above.</span>${sources && !d.check ? '<button class="btn primary" type="button" data-check style="margin-top:8px">Check now</button>' : ""}</div>`
+      ? `<div class="card empty"><b>No tasks yet</b><span>${sources ? `Every sync ends with a check of the last ${d.windowDays} days. Each action it finds lands here.` : `Connect a data source in <a href="#/settings">Project settings</a>: every sync then checks the last ${d.windowDays} days and adds a task for each action needed.`}</span>${sources && !d.check ? '<button class="btn primary" type="button" data-check style="margin-top:8px">Check now</button>' : ""}</div>`
       : filter === "active" ? `<div class="card empty"><b>Nothing to do</b>Every task is done or dismissed.</div>`
       : `<div class="card empty"><b>Nothing here</b>No ${filter === "all" ? "" : filter + " "}tasks.</div>`;
-    view.innerHTML = head("Tasks", `<span>Every sync ends with a check of the last ${d.windowDays} days. Each problem becomes a task here and closes itself once the problem is gone. Add your own tasks too.</span>${d.check ? `<span class="rchip">Last check ${esc(ago(d.check.analyzedAt))}</span>` : ""}`,
+    view.innerHTML = head("Tasks", `<span>Actions from the check of the last ${d.windowDays} days, which runs after every sync. Update each task's status as you work; a task closes itself once its problem is gone.</span>${d.check ? `<span class="rchip">Last check ${esc(ago(d.check.analyzedAt))}</span>` : ""}`,
         sources ? `<button class="btn" type="button" data-check>${icon("sync")}Check again</button>` : "")
-      + `<div class="card"><form id="tkForm" class="form">
-          <label class="wide">${editing ? "Edit task" : "New task"}<input type="text" id="tkTitle" maxlength="200" required placeholder="e.g. Record three new video ads for the best campaign" value="${esc(editing?.title || "")}"></label>
-          <label class="wide">Details <span class="sub">optional: what needs to happen, and how you will know it worked</span><textarea id="tkDetails" maxlength="4000">${esc(editing?.details || "")}</textarea></label>
-          <label>Priority<select id="tkPrio">${[["high", "High"], ["medium", "Medium"], ["low", "Low"]].map(([v, n]) => `<option value="${v}" ${(editing?.priority || "medium") === v ? "selected" : ""}>${n}</option>`).join("")}</select></label>
-          <label>Due date <span class="sub">optional</span><input type="date" id="tkDue" value="${esc(editing?.dueDate || "")}"></label>
-          <div class="wide" style="display:flex;gap:8px"><button class="btn primary">${editing ? "Save changes" : "Add task"}</button>${editing ? '<button class="btn ghost" type="button" id="tkCancel">Cancel</button>' : ""}</div></form></div>
-        <div class="seg" id="tkFilter" role="group" aria-label="Which tasks to show" style="margin:24px 0 12px">${[["active", "To do", groups.active.length], ["done", "Done", groups.done.length], ["dismissed", "Dismissed", groups.dismissed.length], ["all", "All", d.tasks.length]].map(([v, n, c]) => `<button type="button" data-f="${v}" class="${v === filter ? "on" : ""}" aria-pressed="${v === filter}">${n} (${c})</button>`).join("")}</div>
+      + `<div class="seg" id="tkFilter" role="group" aria-label="Which tasks to show" style="margin:0 0 12px">${[["active", "To do", groups.active.length], ["done", "Done", groups.done.length], ["dismissed", "Dismissed", groups.dismissed.length], ["all", "All", d.tasks.length]].map(([v, n, c]) => `<button type="button" data-f="${v}" class="${v === filter ? "on" : ""}" aria-pressed="${v === filter}">${n} (${c})</button>`).join("")}</div>
         <div id="tkList">${groups[filter].map(t => taskCard(t, today)).join("") || empty}</div>`;
     const reload = () => V.tasks().catch(fail);
     const save = async (id, body, msg) => { try { await post(`${base}/${id}`, body); if (msg) toast(msg); } catch (err) { toast(err.message, 7000); } reload(); };
@@ -1274,23 +1264,6 @@ a.pill:hover { border-color: currentColor; }
     $$("#tkFilter button").forEach(b => b.onclick = () => { S.taskFilter = b.dataset.f; reload(); });
     $$("#tkList [data-done]").forEach(b => b.onclick = () => { const t = byId(b.dataset.done); save(t.id, { status: t.status === "done" ? "open" : "done" }, t.status === "done" ? "Task reopened." : "Task done."); });
     $$("#tkList [data-st]").forEach(s => s.onchange = () => save(+s.dataset.st, { status: s.value }));
-    $$("#tkList [data-edit]").forEach(b => b.onclick = async () => { S.taskEdit = +b.dataset.edit; await reload(); $("#tkForm")?.scrollIntoView({ behavior: "smooth", block: "center" }); $("#tkTitle")?.focus({ preventScroll: true }); });
-    $$("#tkList [data-del]").forEach(b => b.onclick = async () => {
-      const t = byId(b.dataset.del); if (!confirm(`Delete the task "${t.title}"?`)) return;
-      try { await post(`${base}/${t.id}/delete`); toast("Task deleted."); } catch (err) { toast(err.message, 7000); }
-      reload();
-    });
-    const cancel = $("#tkCancel"); if (cancel) cancel.onclick = () => { S.taskEdit = null; reload(); };
-    $("#tkForm").onsubmit = async (e) => {
-      e.preventDefault();
-      const body = { title: $("#tkTitle").value, details: $("#tkDetails").value, priority: $("#tkPrio").value, dueDate: $("#tkDue").value };
-      try {
-        if (editing) { await post(`${base}/${editing.id}`, body); toast("Task saved."); }
-        else { await post(base, body); toast("Task added."); S.taskFilter = "active"; }
-        S.taskEdit = null;
-      } catch (err) { toast(err.message, 7000); return; }
-      reload();
-    };
   };
 
   V.targets = async () => {
