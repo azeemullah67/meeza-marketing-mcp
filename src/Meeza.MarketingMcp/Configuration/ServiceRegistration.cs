@@ -60,14 +60,22 @@ public static class ServiceRegistration
         services.AddSingleton<Storage.ProjectStore>();
         services.AddSingleton<Storage.FactStore>();
         services.AddSingleton<Storage.SyncStore>();
+        services.AddSingleton<Storage.TaskStore>();
         services.AddSingleton<Sync.IIntegrationSyncer, Sync.GoogleAdsSyncer>();
         services.AddSingleton<Sync.IIntegrationSyncer, Sync.MetaSyncer>();
         services.AddSingleton<Sync.IIntegrationSyncer, Sync.Ga4Syncer>();
         services.AddSingleton<Sync.IIntegrationSyncer, Sync.AdjustSyncer>();
-        services.AddSingleton<Sync.SyncEngine>();
+        // Every project sync ends with the 30-day problem check, whichever host started it (dashboard, scheduler,
+        // CLI, MCP tool). The check is resolved when it runs, not here: it needs the analytics engine, which itself
+        // depends on the sync engine.
+        services.AddSingleton(sp => new Sync.SyncEngine(
+            sp.GetRequiredService<Storage.ProjectStore>(), sp.GetRequiredService<Storage.SyncStore>(),
+            sp.GetServices<Sync.IIntegrationSyncer>(), sp.GetRequiredService<ILogger<Sync.SyncEngine>>(),
+            (projectId, trigger) => sp.GetRequiredService<Intelligence.ProblemCheck>().Run(projectId, trigger, afterSync: true)));
         services.AddSingleton<Sync.SyncScheduler>();
         services.AddSingleton<Intelligence.ProjectData>();
         services.AddSingleton<Intelligence.AnalyticsEngine>();
+        services.AddSingleton<Intelligence.ProblemCheck>();
         services.AddSingleton<Ai.ClaudeGateway>();
         services.AddSingleton<Ai.AnalystService>();
         services.AddSingleton<Ai.ResearchService>();

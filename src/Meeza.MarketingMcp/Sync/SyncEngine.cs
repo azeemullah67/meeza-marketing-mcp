@@ -16,8 +16,10 @@ public sealed record AccountSyncOutcome(
 /// Plans and runs synchronization: incremental windows first (newest data lands fastest, re-reading recent days that
 /// platforms still revise), then the historical backfill in chunks, resuming where an earlier backfill stopped.
 /// Each window is committed on its own; a failure stops that account only and never deletes stored data.
+/// <paramref name="afterSync"/> (project id, trigger) runs once a project's accounts have been synchronized, while the
+/// project still counts as syncing: the host uses it to analyse the fresh data.
 /// </summary>
-public sealed class SyncEngine(ProjectStore projects, SyncStore syncs, IEnumerable<IIntegrationSyncer> syncers, ILogger<SyncEngine> logger)
+public sealed class SyncEngine(ProjectStore projects, SyncStore syncs, IEnumerable<IIntegrationSyncer> syncers, ILogger<SyncEngine> logger, Action<string, string>? afterSync = null)
 {
     private static readonly string Owner = $"{Environment.ProcessId}-{Guid.NewGuid():N}";
     private readonly ConcurrentDictionary<string, Task<IReadOnlyList<AccountSyncOutcome>>> _running = new();
@@ -43,6 +45,18 @@ public sealed class SyncEngine(ProjectStore projects, SyncStore syncs, IEnumerab
         {
             if (!_syncers.TryGetValue(conn.Integration, out var syncer)) continue;
             outcomes.Add(await SyncAccountAsync(project, syncer, conn.ExternalId, trigger, DateTimeOffset.UtcNow, ct).ConfigureAwait(false));
+        }
+
+        // Failed syncs are analysed too (a broken connection is itself a problem to report). Skipped accounts are being
+        // synchronized by another process, which runs the analysis when it finishes.
+        if (afterSync is not null && outcomes.Any(o => o.Status != "skipped"))
+        {
+            try { afterSync(projectId, trigger); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // The data is already stored: a failed analysis must never turn a finished sync into an error.
+                logger.LogWarning("Analysis after syncing {Project} failed: {Error}", projectId, ToolRunner.Describe(ex));
+            }
         }
         return outcomes;
     }

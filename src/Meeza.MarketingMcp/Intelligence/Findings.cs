@@ -32,7 +32,9 @@ public sealed partial class AnalyticsEngine
 {
     private static readonly string[] SeverityOrder = ["critical", "high", "medium", "low", "info"];
 
-    public IReadOnlyList<Finding> Findings(string projectId, Filters f)
+    /// <param name="afterSync">True when called at the end of a sync: sources are judged by how that sync ended, not
+    /// reported as "syncing".</param>
+    public IReadOnlyList<Finding> Findings(string projectId, Filters f, bool afterSync = false)
     {
         var p = projects.Require(projectId);
         var today = Today(p);
@@ -46,7 +48,7 @@ public sealed partial class AnalyticsEngine
         string M(decimal? v, string unit = "") => v is null ? "n/a" : unit == "money" ? $"{currency} {v:0.##}" : unit == "%" ? $"{v:0.##}%" : $"{v:0.##}";
 
         // ---- data quality first: conclusions on stale data are unreliable.
-        foreach (var s in Status(p).Where(s => s.Freshness is "never" or "stale" or "error"))
+        foreach (var s in Status(p, syncing: afterSync ? false : null).Where(s => s.Freshness is "never" or "stale" or "error"))
             list.Add(new Finding
             {
                 Id = $"data-{s.Integration}-{s.ExternalId}", Category = "data_quality", Severity = s.Freshness == "error" && s.LastSuccessAt is not null ? "medium" : "high",

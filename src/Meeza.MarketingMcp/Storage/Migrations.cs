@@ -223,5 +223,35 @@ public static class Migrations
         -- First-time player (NUX) journey: JSON array of {"e": GA4 event name, "l": optional label}, in journey order.
         ALTER TABLE projects ADD COLUMN nux_events TEXT;
         """),
+        (4, """
+        -- Result of the automatic check that runs after every sync: the findings for the last 30 complete days.
+        -- One row per project (the latest check); the history of what was found lives in the tasks below.
+        CREATE TABLE project_checks(
+            project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+            analyzed_at TEXT NOT NULL, trigger TEXT NOT NULL,
+            range_start TEXT NOT NULL, range_end TEXT NOT NULL,
+            findings_json TEXT NOT NULL
+        );
+
+        -- Per-project to-do list. source='analysis' rows come from a problem the check found (finding_key is the
+        -- problem's stable id, finding_json its evidence); source='manual' rows are written by the user.
+        -- status: open | in_progress | done | dismissed. priority: high | medium | low.
+        -- detected = 1 while the latest check still finds the problem. closed_by: user | analysis (the check closed
+        -- the task because the problem is gone).
+        CREATE TABLE tasks(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            title TEXT NOT NULL, details TEXT,
+            status TEXT NOT NULL DEFAULT 'open',
+            priority TEXT NOT NULL DEFAULT 'medium',
+            source TEXT NOT NULL DEFAULT 'manual',
+            finding_key TEXT, category TEXT, finding_json TEXT,
+            detected INTEGER NOT NULL DEFAULT 0,
+            closed_by TEXT, due_date TEXT,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL, completed_at TEXT, last_seen_at TEXT
+        );
+        CREATE INDEX ix_tasks_status ON tasks(project_id, status);
+        CREATE INDEX ix_tasks_finding ON tasks(project_id, finding_key);
+        """),
     ];
 }

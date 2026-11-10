@@ -41,13 +41,15 @@ public sealed partial class AnalyticsEngine(ProjectStore projects, SyncStore syn
 {
     public ProjectData Data => data;
 
-    public IReadOnlyList<IntegrationStatus> Status(Project p, DateTimeOffset? now = null)
+    /// <param name="syncing">Overrides "is a sync running": the check that runs at the end of a sync passes false so a
+    /// source that just failed is reported as failed instead of as still syncing.</param>
+    public IReadOnlyList<IntegrationStatus> Status(Project p, DateTimeOffset? now = null, bool? syncing = null)
     {
         var states = syncs.States(p.Id);
-        var syncing = engine.IsRunning(p.Id);
+        var running = syncing ?? engine.IsRunning(p.Id);
         return p.Connections.Where(c => Integrations.Synced.Contains(c.Integration)).Select(c =>
             Freshness.Evaluate(c, states.FirstOrDefault(s => s.Integration == c.Integration && s.ExternalId == c.ExternalId),
-                p.SyncIntervalMinutes, syncing, now ?? DateTimeOffset.UtcNow)).ToArray();
+                p.SyncIntervalMinutes, running, now ?? DateTimeOffset.UtcNow)).ToArray();
     }
 
     /// <summary>Today in the project's reporting zone (project time zone, else the first connected account's).</summary>

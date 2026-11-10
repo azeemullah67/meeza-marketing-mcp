@@ -158,6 +158,10 @@ public static class CliCommands
                 if (o.Error is not null) Console.WriteLine("      error: " + Redactor.Redact(o.Error));
                 foreach (var w in o.Warnings) Console.WriteLine("      warning: " + Redactor.Redact(w));
             }
+            // Every sync ends with the 30-day problem check; say what it found.
+            var check = sp.GetRequiredService<Meeza.MarketingMcp.Intelligence.ProblemCheck>().Latest(id);
+            if (check.AnalyzedAt is not null)
+                Console.WriteLine($"  30-day check: {check.Problems.Count} problem(s), {check.Tasks.Active} open task(s). Details: Overview and Tasks in the dashboard.");
         }
         return failed ? 2 : 0;
     }

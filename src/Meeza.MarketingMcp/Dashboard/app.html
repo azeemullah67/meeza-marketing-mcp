@@ -407,6 +407,39 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
 .hc .r, .hc .n { font-size: 11.5px; line-height: 16px; color: var(--muted); }
 .okline { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 13px; color: var(--text-2); }
 .okline > summary { cursor: pointer; color: var(--accent); font-weight: 500; list-style: none; }
+/* ===================================================================== 30-day check & tasks */
+.side .cnt { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: rgba(255,255,255,.2); color: #fff; font: 700 11px/20px var(--font); text-align: center; }
+.side .cnt:empty { display: none; }
+.side a.nav.on .cnt { background: var(--accent); color: var(--accent-ink); }
+a.pill { text-decoration: none; }
+a.pill:hover { border-color: currentColor; }
+.fb dl { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; margin: 10px 0 0; font-size: 13px; }
+.fb dt { font: 600 11px/18px var(--font); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); } .fb dd { margin: 0; }
+.fb dd.act { background: var(--wash); color: var(--wash-ink); border-radius: 8px; padding: 8px 12px; font-weight: 600; }
+.chk .attn > div > b { margin-right: 8px; }
+.chk .attn:last-of-type { border-bottom: 0; padding-bottom: 0; }
+.chk .foot { display: flex; gap: 8px 16px; align-items: center; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--grid); font-size: 12.5px; color: var(--text-2); }
+.chk .foot .grow { flex: 1; }
+.chk details.opp > summary { cursor: pointer; color: var(--accent); font-weight: 500; list-style: none; }
+.chk details.opp > summary::-webkit-details-marker { display: none; }
+.chk details.opp ul { margin: 8px 0 0; padding-left: 20px; }
+.task { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 4px 12px; align-items: start; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-xs); }
+.task + .task { margin-top: 8px; }
+.task.closed { background: var(--surface-2); box-shadow: none; }
+.task.closed .tt b { color: var(--text-2); text-decoration: line-through; text-decoration-color: var(--muted); }
+.task .tk { width: 24px; height: 24px; margin-top: -1px; padding: 0; border-radius: 999px; border: 2px solid var(--border-strong); background: var(--surface); color: transparent; cursor: pointer; display: grid; place-items: center; transition: var(--tr); }
+.task .tk svg { width: 14px; height: 14px; stroke-width: 2.5; }
+.task .tk:hover { border-color: var(--good); color: var(--good); }
+.task .tk.on { background: var(--good); border-color: var(--good); color: #fff; }
+.task .tt { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font: 600 14px/20px var(--font); }
+.task .n { font-size: 13px; color: var(--text-2); margin-top: 2px; white-space: pre-line; overflow-wrap: anywhere; }
+.task .meta { font-size: 12px; color: var(--muted); margin-top: 6px; display: flex; gap: 4px 12px; flex-wrap: wrap; align-items: center; }
+.task .meta .late { color: var(--critical-text); font-weight: 600; }
+.task details { margin-top: 6px; }
+.task details > summary { font-size: 12.5px; color: var(--accent); cursor: pointer; list-style: none; }
+.task details > summary::-webkit-details-marker { display: none; }
+.task .acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.task .acts select { height: 32px; }
 /* ===================================================================== responsive */
 @media (max-width: 1200px) { .kpis.hero4 { grid-template-columns: repeat(2, minmax(0,1fr)); } .g75 { grid-template-columns: minmax(0,1fr); } }
 @media (max-width: 900px) {
@@ -427,7 +460,8 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
   .g2, .g3 { grid-template-columns: minmax(0,1fr); }
   .verdict { grid-template-columns: 1fr; } .verdict .top3 { border-left: 0; padding-left: 0; border-top: 1px solid var(--border); padding-top: 12px; }
   .funnel .step { grid-template-columns: 1fr auto; } .funnel .step > div:nth-child(2) { grid-column: 1 / -1; order: 3; } .funnel .step > div:nth-child(4) { grid-column: 1 / -1; order: 4; }
-  .finding dl { grid-template-columns: 1fr; }
+  .finding dl, .fb dl { grid-template-columns: 1fr; }
+  .task { grid-template-columns: auto minmax(0,1fr); } .task .acts { grid-column: 2; justify-content: flex-start; margin-top: 6px; }
   .cr { grid-template-columns: 1fr; } .cr .thumb { width: 100%; height: 160px; }
   .pop { position: fixed; left: 12px; right: 12px; top: auto; bottom: 72px; width: auto; }
   .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; height: 60px; z-index: 50; background: var(--head-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
@@ -466,6 +500,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     <div class="brand"><span class="logo" aria-hidden="true">M</span><div><b>Meeza Growth</b><small>Game marketing intelligence</small></div></div>
     <div class="projsw"><label for="project">Project</label><select id="project"></select></div>
     <a class="nav" data-r="overview" href="#/overview"><i data-ic="overview"></i>Overview</a>
+    <a class="nav" data-r="tasks" href="#/tasks"><i data-ic="tasks"></i>Tasks<span class="cnt" id="taskCnt" aria-label="open tasks"></span></a>
     <div class="grp">Performance</div>
     <a class="nav" data-r="campaigns" href="#/campaigns"><i data-ic="campaigns"></i>Campaigns</a>
     <a class="nav" data-r="creatives" href="#/creatives"><i data-ic="creatives"></i>Creatives</a>
@@ -602,6 +637,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     chev: '<path d="M8 5l5 5-5 5"/>',
     target: '<circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3"/>',
     check: '<path d="M4 10.5l4 4 8-9"/>',
+    tasks: '<path d="M3 5.5l1.5 1.5L7 4"/><path d="M3 12.5l1.5 1.5L7 11"/><path d="M10.5 5.5H17M10.5 12.5H17"/>',
   };
   const icon = (n, cls = "i") => `<svg class="${cls}" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IP[n] || ""}</svg>`;
   const arrow = (up) => `<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${up ? '<path d="M5 8.5V1.5M2 4.5l3-3 3 3"/>' : '<path d="M5 1.5v7M2 5.5l3 3 3-3"/>'}</svg>`;
@@ -631,6 +667,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
   document.addEventListener("click", (e) => {
     const b = e.target.closest(".infob"); if (b) { e.preventDefault(); e.stopPropagation(); ipop.style.display === "block" ? hideInfo() : showInfo(b); return; }
     const t = e.target.closest(".settgt"); if (t) { e.stopPropagation(); S.tgtMetric = t.dataset.metric; location.hash = "#/targets"; return; }
+    const ck = e.target.closest("[data-check]"); if (ck) { e.preventDefault(); runCheck(ck); return; }
     const mv = e.target.closest("[data-mv]"); if (mv) { e.preventDefault(); const d = document.getElementById("mv-" + mv.dataset.mv); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth", block: "center" }); d.querySelector("summary")?.focus({ preventScroll: true }); } return; }
     const jp = e.target.closest("[data-jump]"); if (jp) { e.preventDefault(); const d = document.getElementById(jp.dataset.jump); if (d) { if (d.tagName === "DETAILS") { d.open = true; d.querySelector("summary")?.focus({ preventScroll: true }); } else d.focus({ preventScroll: true }); d.scrollIntoView({ behavior: "smooth", block: "start" }); } return; }
     const card = e.target.closest("[data-href]"); if (card && !e.target.closest("a,button,summary,input,select")) location.hash = card.dataset.href;
@@ -749,6 +786,56 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
         <div class="hc">${others.map(h => `<div><div class="l"><span>${esc(h.label)}</span><span class="st ${esc(h.status)}">${esc(stLabel[h.status] || h.status)}</span></div><div class="v">${esc(h.value)}</div>${h.reference ? `<div class="r">vs ${esc(h.reference)}${h.referenceSource ? ` · ${cite(h.referenceSource)}` : ""}</div>` : ""}<div class="n">${esc(h.note)}</div></div>`).join("")}</div></details>
     </section>`;
   }
+  // ------------------------------------------------------------------ 30-day check (runs after every sync) & tasks
+  const TASK_ST = { open: ["Task open", "warn"], in_progress: ["Task in progress", "estimate"], done: ["Task done", "good"], dismissed: ["Task dismissed", "never"] };
+  const taskPill = (t) => t ? `<a class="pill ${TASK_ST[t.status]?.[1] || ""}" href="#/tasks">${esc(TASK_ST[t.status]?.[0] || t.status)}</a>` : "";
+  const plural = (n, one, many) => `${num(n)} ${n === 1 ? one : many}`;
+  function checkCard(c) {
+    if (!c) return `<div class="mt-l">${cardErr("the 30-day check")}</div>`;
+    const title = `Problems in the last ${c.windowDays} days`;
+    if (!c.analyzedAt) return `<section class="card chk mt-l"><div class="hd"><h2>${title}</h2></div><div class="empty bare">${c.sources
+      ? `<b>Not checked yet</b><span>Every sync ends with a check of the last ${c.windowDays} days. Each problem it finds is listed here and added to <a href="#/tasks">Tasks</a>.</span><button class="btn primary" type="button" data-check style="margin-top:8px">Check now</button>`
+      : `<b>Nothing to check yet</b><span>Connect a data source in <a href="#/settings">Project settings</a>. Every sync then ends with a check of the last ${c.windowDays} days.</span>`}</div></section>`;
+    const rows = c.problems.map(x => { const f = x.finding; return `<div class="attn"><span class="sev ${esc(f.severity)}">${esc(f.severity)}</span><div><b>${esc(f.problem)}</b>${taskPill(x.task)}<div class="n">${esc(f.action)}</div><details><summary>Evidence and details ▸</summary><div class="fb">${findingBody(f)}</div></details></div></div>`; });
+    const opp = c.opportunities;
+    return `<section class="card chk mt-l" id="chk-card" tabindex="-1">
+      <div class="hd"><h2>${title}</h2><span class="sub">${esc(rng(c.range))} · checked ${esc(ago(c.analyzedAt))}</span><a href="#/tasks" class="sub">${c.tasks.active ? plural(c.tasks.active, "open task", "open tasks") : "Tasks"} →</a></div>
+      ${rows.length ? rows.slice(0, 6).join("") + (rows.length > 6 ? `<details><summary class="btn ghost" style="margin-top:8px">Show all (${rows.length})</summary>${rows.slice(6).join("")}</details>` : "")
+        : `<div class="empty bare"><b>No problems found</b>The check found nothing wrong in ${esc(rng(c.range))}.</div>`}
+      <div class="foot">${opp.length ? `<details class="opp"><summary>${plural(opp.length, "opportunity", "opportunities")} ▸</summary><ul>${opp.map(f => `<li><b>${esc(f.problem)}</b>: ${esc(f.action)}</li>`).join("")}</ul></details>` : ""}<span class="grow"></span><span>Runs after every sync. Each problem becomes a task and closes itself once the problem is gone.</span><button class="btn" type="button" data-check>Check again</button></div>
+    </section>`;
+  }
+  async function runCheck(btn) {
+    if (!S.project) return;
+    btn.disabled = true;
+    try {
+      const c = await post(`/api/v2/projects/${encodeURIComponent(S.project)}/check`);
+      toast(c.problems.length ? `Check finished: ${plural(c.problems.length, "problem", "problems")} in the last ${c.windowDays} days.` : `Check finished: no problems in the last ${c.windowDays} days.`);
+      await loadProjects(); renderSyncState(); await route();
+    } catch (err) { toast(err.message, 7000); btn.disabled = false; }
+  }
+  const todayIso = () => { const d = new Date(), z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };
+  function taskCard(t, today) {
+    const closed = t.status === "done" || t.status === "dismissed", auto = t.source === "analysis";
+    const late = !closed && t.dueDate && t.dueDate < today;
+    const meta = [
+      auto ? "Found by the 30-day check" : "Added by you",
+      `created ${esc(ago(t.createdAt))}`,
+      t.dueDate ? `<span class="${late ? "late" : ""}">${late ? "overdue · " : ""}due ${esc(dshort(t.dueDate))}</span>` : "",
+      !closed ? "" : t.closedBy === "analysis" ? `closed by the check ${esc(ago(t.completedAt))}: the problem is no longer found` : `${t.status} ${esc(ago(t.completedAt))}`,
+      auto && closed && t.detected ? '<span class="late">the latest check still finds this problem</span>' : "",
+    ].filter(Boolean);
+    return `<div class="task ${closed ? "closed" : ""}">
+      <button type="button" class="tk ${t.status === "done" ? "on" : ""}" data-done="${t.id}" aria-pressed="${t.status === "done"}" aria-label="${t.status === "done" ? "Reopen" : "Mark as done"}: ${esc(t.title)}" title="${t.status === "done" ? "Reopen" : "Mark as done"}">${icon("check")}</button>
+      <div><div class="tt"><span class="sev ${esc(t.priority)}">${esc(t.priority)}</span><b>${esc(t.title)}</b>${t.status === "in_progress" ? '<span class="pill estimate">In progress</span>' : ""}${t.category ? `<span class="pill">${esc(t.category.replace(/_/g, " "))}</span>` : ""}</div>
+        ${t.details ? `<div class="n">${esc(t.details)}</div>` : ""}
+        ${t.finding ? `<details><summary>Evidence and details ▸</summary><div class="fb">${findingBody(t.finding)}</div></details>` : ""}
+        <div class="meta">${meta.map(m => `<span>${m}</span>`).join("")}</div></div>
+      <div class="acts"><select data-st="${t.id}" aria-label="Status of ${esc(t.title)}">${[["open", "Open"], ["in_progress", "In progress"], ["done", "Done"], ["dismissed", "Dismissed"]].map(([v, n]) => `<option value="${v}" ${t.status === v ? "selected" : ""}>${n}</option>`).join("")}</select>
+        ${auto ? "" : `<button class="btn" type="button" data-edit="${t.id}">Edit</button>`}${!auto || !t.detected ? `<button class="btn danger" type="button" data-del="${t.id}">Delete</button>` : ""}</div>
+    </div>`;
+  }
+
   const METRIC_GROUPS = [["Acquisition", ["spend", "installs", "cpi", "cpm", "cpc", "ctr", "ipm", "impressions", "reach", "frequency"]], ["Engagement", ["dau", "wau", "mau"]], ["Retention", ["d1", "d3", "d7", "d14", "d30"]], ["Monetization", ["revenue", "arpu", "arpdau", "ltv", "roas", "roas_d7"]]];
   function allMetricsCard(k, ctx) {
     return `<section class="card mt-l"><div class="hd"><h2>All metrics</h2><div class="tabs" role="tablist" aria-label="Metric groups" style="margin-left:auto">${METRIC_GROUPS.map((g, i) => `<button type="button" role="tab" id="mt-${i}" aria-controls="mp-${i}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${g[0]}</button>`).join("")}</div></div>
@@ -913,9 +1000,9 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
   V.overview = async () => {
     if (needProject()) return;
     view.innerHTML = head("Overview", "Loading…") + `<div class="skel" style="min-height:168px"></div><div class="kpis hero4 mt">${Array(4).fill('<div class="skel" style="min-height:172px"></div>').join("")}</div><div class="g75 mt-l"><div class="skel" style="min-height:360px"></div><div class="skel" style="min-height:360px"></div></div>`;
-    const [ro, rs] = await Promise.allSettled([pv("overview"), pv("strategy")]);
+    const [ro, rs, rc] = await Promise.allSettled([pv("overview"), pv("strategy"), api(`/api/v2/projects/${encodeURIComponent(S.project)}/check`)]);
     if (ro.status === "rejected") throw ro.reason;
-    const d = ro.value, st = rs.status === "fulfilled" ? rs.value : null;
+    const d = ro.value, st = rs.status === "fulfilled" ? rs.value : null, chk = rc.status === "fulfilled" ? rc.value : null;
     const k = Object.fromEntries(d.kpis.map(x => [x.key, x]));
     const ctx = { noRevenue: !!st?.health.some(h => h.key === "monetization" && /no revenue/i.test(h.value)) };
     const roasOk = k.roas && !kpiNa(k.roas, ctx);
@@ -928,6 +1015,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
       + notesBlock(d.notes)
       + (st ? verdictCard(st) : cardErr("the diagnosis"))
       + `<div class="kpis hero4 mt">${hero.map(x => kpiCard(k[x], "hero", ctx)).join("")}</div>`
+      + checkCard(chk)
       + (st ? `<div class="g75 mt-l">${planCard(st)}${attentionCard(st)}</div>` : "")
       + allMetricsCard(k, ctx)
       + `<section class="card mt-l"><div class="hd"><h2>New users by source</h2><span class="sub">GA4 first-user channel</span>${acq.available ? infoBtn(acq.definition, "How sources are defined") : ""}</div>${acq.available ? `
@@ -1150,6 +1238,59 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     $("#rForm").onsubmit = async (e) => { e.preventDefault(); try { await post(`/api/v2/projects/${encodeURIComponent(S.project)}/research`, { topic: $("#rTopic").value, question: $("#rQ").value }); toast("Research started."); V.research(); } catch (err) { toast(err.message, 8000); } };
     clearTimeout(V.research.t);
     if (d.reports.some(r => r.status === "running")) V.research.t = setTimeout(() => { if (S.route === "research") V.research().catch(fail); }, 15000);
+  };
+
+  V.tasks = async () => {
+    if (needProject()) return;
+    const base = `/api/v2/projects/${encodeURIComponent(S.project)}/tasks`;
+    const d = await api(base);
+    const p = P(); if (p) { p.openTasks = d.counts.active; renderSyncState(); }
+    const groups = {
+      active: d.tasks.filter(t => t.status === "open" || t.status === "in_progress"),
+      done: d.tasks.filter(t => t.status === "done").sort((a, b) => (b.completedAt || "").localeCompare(a.completedAt || "")),
+      dismissed: d.tasks.filter(t => t.status === "dismissed"),
+      all: d.tasks,
+    };
+    const filter = groups[S.taskFilter] ? S.taskFilter : "active";
+    const editing = S.taskEdit ? d.tasks.find(t => t.id === S.taskEdit && t.source === "manual") : null;
+    const sources = p?.status.length || 0, today = todayIso();
+    const empty = d.tasks.length === 0
+      ? `<div class="card empty"><b>No tasks yet</b><span>${sources ? `Every sync ends with a check of the last ${d.windowDays} days, and each problem it finds lands here.` : `Connect a data source in <a href="#/settings">Project settings</a>: every sync then checks the last ${d.windowDays} days and adds a task for each problem.`} You can also add your own above.</span>${sources && !d.check ? '<button class="btn primary" type="button" data-check style="margin-top:8px">Check now</button>' : ""}</div>`
+      : filter === "active" ? `<div class="card empty"><b>Nothing to do</b>Every task is done or dismissed.</div>`
+      : `<div class="card empty"><b>Nothing here</b>No ${filter === "all" ? "" : filter + " "}tasks.</div>`;
+    view.innerHTML = head("Tasks", `<span>Every sync ends with a check of the last ${d.windowDays} days. Each problem becomes a task here and closes itself once the problem is gone. Add your own tasks too.</span>${d.check ? `<span class="rchip">Last check ${esc(ago(d.check.analyzedAt))}</span>` : ""}`,
+        sources ? `<button class="btn" type="button" data-check>${icon("sync")}Check again</button>` : "")
+      + `<div class="card"><form id="tkForm" class="form">
+          <label class="wide">${editing ? "Edit task" : "New task"}<input type="text" id="tkTitle" maxlength="200" required placeholder="e.g. Record three new video ads for the best campaign" value="${esc(editing?.title || "")}"></label>
+          <label class="wide">Details <span class="sub">optional: what needs to happen, and how you will know it worked</span><textarea id="tkDetails" maxlength="4000">${esc(editing?.details || "")}</textarea></label>
+          <label>Priority<select id="tkPrio">${[["high", "High"], ["medium", "Medium"], ["low", "Low"]].map(([v, n]) => `<option value="${v}" ${(editing?.priority || "medium") === v ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+          <label>Due date <span class="sub">optional</span><input type="date" id="tkDue" value="${esc(editing?.dueDate || "")}"></label>
+          <div class="wide" style="display:flex;gap:8px"><button class="btn primary">${editing ? "Save changes" : "Add task"}</button>${editing ? '<button class="btn ghost" type="button" id="tkCancel">Cancel</button>' : ""}</div></form></div>
+        <div class="seg" id="tkFilter" role="group" aria-label="Which tasks to show" style="margin:24px 0 12px">${[["active", "To do", groups.active.length], ["done", "Done", groups.done.length], ["dismissed", "Dismissed", groups.dismissed.length], ["all", "All", d.tasks.length]].map(([v, n, c]) => `<button type="button" data-f="${v}" class="${v === filter ? "on" : ""}" aria-pressed="${v === filter}">${n} (${c})</button>`).join("")}</div>
+        <div id="tkList">${groups[filter].map(t => taskCard(t, today)).join("") || empty}</div>`;
+    const reload = () => V.tasks().catch(fail);
+    const save = async (id, body, msg) => { try { await post(`${base}/${id}`, body); if (msg) toast(msg); } catch (err) { toast(err.message, 7000); } reload(); };
+    const byId = (id) => d.tasks.find(t => t.id === +id);
+    $$("#tkFilter button").forEach(b => b.onclick = () => { S.taskFilter = b.dataset.f; reload(); });
+    $$("#tkList [data-done]").forEach(b => b.onclick = () => { const t = byId(b.dataset.done); save(t.id, { status: t.status === "done" ? "open" : "done" }, t.status === "done" ? "Task reopened." : "Task done."); });
+    $$("#tkList [data-st]").forEach(s => s.onchange = () => save(+s.dataset.st, { status: s.value }));
+    $$("#tkList [data-edit]").forEach(b => b.onclick = async () => { S.taskEdit = +b.dataset.edit; await reload(); $("#tkForm")?.scrollIntoView({ behavior: "smooth", block: "center" }); $("#tkTitle")?.focus({ preventScroll: true }); });
+    $$("#tkList [data-del]").forEach(b => b.onclick = async () => {
+      const t = byId(b.dataset.del); if (!confirm(`Delete the task "${t.title}"?`)) return;
+      try { await post(`${base}/${t.id}/delete`); toast("Task deleted."); } catch (err) { toast(err.message, 7000); }
+      reload();
+    });
+    const cancel = $("#tkCancel"); if (cancel) cancel.onclick = () => { S.taskEdit = null; reload(); };
+    $("#tkForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const body = { title: $("#tkTitle").value, details: $("#tkDetails").value, priority: $("#tkPrio").value, dueDate: $("#tkDue").value };
+      try {
+        if (editing) { await post(`${base}/${editing.id}`, body); toast("Task saved."); }
+        else { await post(base, body); toast("Task added."); S.taskFilter = "active"; }
+        S.taskEdit = null;
+      } catch (err) { toast(err.message, 7000); return; }
+      reload();
+    };
   };
 
   V.targets = async () => {
@@ -1454,6 +1595,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
   }
   function renderSyncState() {
     const p = P(), el = $("#syncState"), dot = $("#srcDot"), btn = $("#syncBtn");
+    $("#taskCnt").textContent = p?.openTasks ? (p.openTasks > 99 ? "99+" : p.openTasks) : "";
     const syncing = !!p?.status.some(s => s.syncing) || !!S.syncPoll;
     btn.classList.toggle("spin", syncing);
     if (!p) { el.className = "pill"; el.textContent = "no project"; dot.className = "dot"; return; }

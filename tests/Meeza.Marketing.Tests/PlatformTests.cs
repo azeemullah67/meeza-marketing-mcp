@@ -1029,7 +1029,7 @@ public class PlatformApiTests : IAsyncLifetime
         Assert.Equal(123m, ovA.GetProperty("totals").GetProperty("spend").GetDecimal());
         Assert.Equal(0m, ovB.GetProperty("totals").GetProperty("spend").GetDecimal());
 
-        foreach (var v in new[] { "overview", "retention", "campaigns", "creatives", "funnel", "attribution", "forecast", "findings", "strategy", "sync", "targets", "filters" })
+        foreach (var v in new[] { "overview", "retention", "campaigns", "creatives", "funnel", "attribution", "forecast", "findings", "strategy", "sync", "targets", "filters", "check", "tasks" })
             Assert.Equal(HttpStatusCode.OK, (await _http.GetAsync($"/api/v2/projects/{aId}/{v}?preset=last_7_days")).StatusCode);
 
         var list = await _http.GetFromJsonAsync<JsonElement>("/api/v2/projects");
@@ -1061,6 +1061,94 @@ public class PlatformApiTests : IAsyncLifetime
         var ask = await Post($"/api/v2/projects/{id}/analyst", new { question = "Why?" });
         Assert.Equal(HttpStatusCode.BadRequest, ask.StatusCode);
         Assert.Contains("Anthropic API key", await ask.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Tasks_can_be_added_changed_and_removed_and_stay_inside_their_project()
+    {
+        async Task<string> NewProject(string name) =>
+            (await (await Post("/api/v2/projects", new { name, syncNow = false })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        var a = await NewProject("Game A");
+        var b = await NewProject("Game B");
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{a}/tasks", new { title = " " })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{a}/tasks", new { title = "X", priority = "urgent" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{a}/tasks", new { title = "X", dueDate = "tomorrow" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Post($"/api/v2/projects/{a}/tasks", new { title = "X" }, csrf: false)).StatusCode);
+
+        var created = await Post($"/api/v2/projects/{a}/tasks", new { title = " Record new video ads ", details = "Three hooks", priority = "high", dueDate = "2026-12-01" });
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+        var task = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var tid = task.GetProperty("id").GetInt64();
+        Assert.Equal(("Record new video ads", "open", "manual", "high"),
+            (task.GetProperty("title").GetString(), task.GetProperty("status").GetString(), task.GetProperty("source").GetString(), task.GetProperty("priority").GetString()));
+
+        var list = await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{a}/tasks");
+        Assert.Equal(1, list.GetProperty("tasks").GetArrayLength());
+        Assert.Equal(1, list.GetProperty("counts").GetProperty("active").GetInt32());
+        var summaries = (await _http.GetFromJsonAsync<JsonElement>("/api/v2/projects")).GetProperty("projects").EnumerateArray()
+            .ToDictionary(x => x.GetProperty("project").GetProperty("id").GetString()!, x => x.GetProperty("openTasks").GetInt32());
+        Assert.Equal((1, 0), (summaries[a], summaries[b]));
+
+        // Another project can neither see nor change it.
+        Assert.Equal(0, (await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{b}/tasks")).GetProperty("tasks").GetArrayLength());
+        Assert.Equal(HttpStatusCode.NotFound, (await Post($"/api/v2/projects/{b}/tasks/{tid}", new { status = "done" })).StatusCode);
+        Assert.False((await (await Post($"/api/v2/projects/{b}/tasks/{tid}/delete", new { })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("deleted").GetBoolean());
+
+        // A status change leaves the rest of the task alone.
+        var done = await (await Post($"/api/v2/projects/{a}/tasks/{tid}", new { status = "done" })).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(("done", "Three hooks", "user"), (done.GetProperty("status").GetString(), done.GetProperty("details").GetString(), done.GetProperty("closedBy").GetString()));
+        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{a}/tasks/{tid}", new { status = "archived" })).StatusCode);
+
+        Assert.True((await (await Post($"/api/v2/projects/{a}/tasks/{tid}/delete", new { })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("deleted").GetBoolean());
+        Assert.Equal(0, (await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{a}/tasks")).GetProperty("tasks").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task The_30_day_check_runs_on_demand_and_at_the_end_of_every_sync()
+    {
+        async Task<string> NewProject(string name) =>
+            (await (await Post("/api/v2/projects", new { name, timeZone = "UTC", syncNow = false, connections = new[] { new { integration = "google_ads", externalId = "1234567890" } } }))
+                .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        static string? Id(JsonElement problem) => problem.GetProperty("finding").GetProperty("id").GetString();
+        var id = await NewProject("Checked");
+
+        var before = await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{id}/check");
+        Assert.Equal(JsonValueKind.Null, before.GetProperty("analyzedAt").ValueKind);
+        Assert.Equal((30, 1), (before.GetProperty("windowDays").GetInt32(), before.GetProperty("sources").GetInt32()));
+
+        // On demand: the never-synced source is a problem, and the problem is a task.
+        var ran = await Post($"/api/v2/projects/{id}/check", new { });
+        Assert.Equal(HttpStatusCode.OK, ran.StatusCode);
+        var check = await ran.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("manual", check.GetProperty("trigger").GetString());
+        var problem = check.GetProperty("problems").EnumerateArray().Single();
+        Assert.Equal("data-google_ads-1234567890", Id(problem));
+        Assert.Equal("open", problem.GetProperty("task").GetProperty("status").GetString());
+        var tid = problem.GetProperty("task").GetProperty("id").GetInt64();
+
+        var task = (await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{id}/tasks")).GetProperty("tasks").EnumerateArray().Single();
+        Assert.Equal(("analysis", "high", true), (task.GetProperty("source").GetString(), task.GetProperty("priority").GetString(), task.GetProperty("detected").GetBoolean()));
+        Assert.NotEmpty(task.GetProperty("finding").GetProperty("evidence").EnumerateArray());
+
+        // The check owns the task's text, and a task for a live problem is dismissed rather than deleted.
+        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{id}/tasks/{tid}", new { title = "Mine" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await Post($"/api/v2/projects/{id}/tasks/{tid}/delete", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await Post($"/api/v2/projects/{id}/tasks/{tid}", new { status = "dismissed" })).StatusCode);
+        var again = await (await Post($"/api/v2/projects/{id}/check", new { })).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("dismissed", again.GetProperty("problems").EnumerateArray().Single().GetProperty("task").GetProperty("status").GetString());
+        Assert.Equal(1, (await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{id}/tasks")).GetProperty("tasks").GetArrayLength());
+
+        // At the end of a sync, through the engine every host shares. With no credentials the sync fails before any
+        // request is made; if this machine has real Google Ads credentials in its environment, do not use them.
+        var sync = _sp!.GetRequiredService<SyncEngine>();
+        if (sync.Syncer(Integrations.GoogleAds)!.IsConfigured) return;
+        var synced = await NewProject("Synced");
+        Assert.Equal("failed", (await sync.SyncProjectAsync(synced, "schedule", null, default)).Single().Status);
+        var after = await _http.GetFromJsonAsync<JsonElement>($"/api/v2/projects/{synced}/check");
+        Assert.Equal("schedule", after.GetProperty("trigger").GetString());
+        Assert.Equal("data-google_ads-1234567890", Id(after.GetProperty("problems").EnumerateArray().Single()));
+        Assert.Equal(1, after.GetProperty("tasks").GetProperty("active").GetInt32());
     }
 
     [Fact]

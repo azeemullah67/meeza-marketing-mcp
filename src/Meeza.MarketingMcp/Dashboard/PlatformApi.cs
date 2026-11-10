@@ -32,10 +32,16 @@ public static class PlatformApi
         var syncs = sp.GetRequiredService<SyncStore>();
         var analyst = sp.GetRequiredService<AnalystService>();
         var research = sp.GetRequiredService<ResearchService>();
+        var tasks = sp.GetRequiredService<TaskStore>();
+        var check = sp.GetRequiredService<ProblemCheck>();
 
         var g = "/api/v2";
 
-        app.MapGet(g + "/projects", () => Ok(new { projects = projects.List(includeArchived: true).Select(p => Summary(p, engine)), aiConfigured = analyst.IsConfigured }));
+        app.MapGet(g + "/projects", () =>
+        {
+            var open = tasks.ActiveCounts();
+            return Ok(new { projects = projects.List(includeArchived: true).Select(p => Summary(p, engine, open.GetValueOrDefault(p.Id))), aiConfigured = analyst.IsConfigured });
+        });
         app.MapPost(g + "/projects", (HttpRequest req) => Handle(async () =>
         {
             var body = await Body<ProjectInput>(req);
@@ -102,6 +108,38 @@ public static class PlatformApi
             _ = sync.StartProjectSync(id, "manual", body.Integration);
             return new { started = !already, running = true, message = already ? "A sync for this project is already running." : "Sync started. The dashboard stays usable; data updates as each source finishes." };
         }));
+
+        // ---- automatic 30-day check & tasks. The check runs at the end of every sync; POST runs it on demand over
+        // the data already stored (it never contacts a platform).
+        app.MapGet(g + "/projects/{id}/check", (string id) => Handle(() => Task.FromResult<object>(check.Latest(id))));
+        app.MapPost(g + "/projects/{id}/check", (string id) => Handle(() =>
+        {
+            check.Run(projects.Require(id).Id, "manual");
+            return Task.FromResult<object>(check.Latest(id));
+        }));
+        app.MapGet(g + "/projects/{id}/tasks", (string id) => Handle(() =>
+        {
+            var pid = projects.Require(id).Id;
+            var latest = tasks.LatestCheck(pid);
+            return Task.FromResult<object>(new
+            {
+                tasks = tasks.List(pid), counts = tasks.Counts(pid),
+                check = latest is null ? null : new { analyzedAt = latest.AnalyzedAt, range = $"{latest.RangeStart}..{latest.RangeEnd}" },
+                windowDays = ProblemCheck.WindowDays,
+            });
+        }));
+        app.MapPost(g + "/projects/{id}/tasks", (string id, HttpRequest req) => Handle(async () =>
+        {
+            var t = await Body<TaskInput>(req);
+            return tasks.Create(projects.Require(id).Id, t.Title, t.Details, t.Priority, t.DueDate);
+        }));
+        app.MapPost(g + "/projects/{id}/tasks/{taskId:long}", (string id, long taskId, HttpRequest req) => Handle(async () =>
+        {
+            var t = await Body<TaskInput>(req);
+            return tasks.Update(projects.Require(id).Id, taskId, new TaskPatch { Title = t.Title, Details = t.Details, Priority = t.Priority, Status = t.Status, DueDate = t.DueDate });
+        }));
+        app.MapPost(g + "/projects/{id}/tasks/{taskId:long}/delete", (string id, long taskId) =>
+            Handle(() => Task.FromResult<object>(new { deleted = tasks.Delete(projects.Require(id).Id, taskId) })));
 
         // ---- KPI targets & benchmarks
         app.MapGet(g + "/projects/{id}/targets", (string id) => Handle(() => Task.FromResult<object>(new
@@ -180,7 +218,7 @@ public static class PlatformApi
         }
     }
 
-    private static object Summary(Project p, AnalyticsEngine engine) => new { project = p, status = engine.Status(p) };
+    private static object Summary(Project p, AnalyticsEngine engine, int openTasks) => new { project = p, status = engine.Status(p), openTasks };
 
     /// <summary>Resolves date filters relative to "today" in the project's time zone.</summary>
     public static Filters ParseFilters(Project p, HttpRequest r)
@@ -345,6 +383,16 @@ public static class PlatformApi
         public string? ScopeValue { get; set; }
         public decimal? Target { get; set; }
         public string? Notes { get; set; }
+    }
+
+    /// <summary>New task, or changes to one: a missing field is left as it is, an empty details / dueDate clears it.</summary>
+    public sealed class TaskInput
+    {
+        public string? Title { get; set; }
+        public string? Details { get; set; }
+        public string? Priority { get; set; }
+        public string? Status { get; set; }
+        public string? DueDate { get; set; }
     }
 
     public sealed class SyncRequest { public string? Integration { get; set; } }
