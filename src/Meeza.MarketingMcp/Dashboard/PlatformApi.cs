@@ -334,6 +334,7 @@ public static class PlatformApi
         public string? LaunchStage { get; set; }
         public string? Objectives { get; set; }
         public string? TutorialEvent { get; set; }
+        public string? TutorialStartEvent { get; set; }
         public string? PurchaseEvent { get; set; }
         /// <summary>Null = keep the saved journey (on update); an empty list clears it.</summary>
         public List<NuxStepInput>? NuxEvents { get; set; }
@@ -347,7 +348,7 @@ public static class PlatformApi
         {
             Name = Name ?? "", Genre = Genre, Platforms = Platforms, AndroidStoreUrl = AndroidStoreUrl, IosStoreUrl = IosStoreUrl,
             TargetCountries = TargetCountries, Monetization = Monetization, Currency = Currency, TimeZone = TimeZone, LaunchStage = LaunchStage,
-            Objectives = Objectives, TutorialEvent = TutorialEvent, PurchaseEvent = PurchaseEvent, BackfillDays = BackfillDays ?? 90,
+            Objectives = Objectives, TutorialEvent = TutorialEvent, TutorialStartEvent = TutorialStartEvent, PurchaseEvent = PurchaseEvent, BackfillDays = BackfillDays ?? 90,
             NuxEvents = NuxEvents?.Select(s => new NuxStep(s.Event ?? "", s.Label)).ToList(),
             SyncIntervalMinutes = SyncIntervalMinutes ?? 60, Archived = Archived ?? false,
             Connections = Connections?.Select(c => c.ToConnection()).ToList() ?? [],

@@ -296,7 +296,7 @@ public sealed partial class AnalyticsEngine
         var targets = projects.Targets(projectId);
         long? Ev(string? name) => name is not null && events.TryGetValue(name, out var v) ? v.Users : null;
         var tutorialEvent = p.TutorialEvent ?? (events.ContainsKey("tutorial_complete") ? "tutorial_complete" : null);
-        var tutorialBegin = events.ContainsKey("tutorial_begin") ? "tutorial_begin" : null;
+        var tutorialBegin = events.ContainsKey(p.TutorialStart) ? p.TutorialStart : null;
         var purchaseEvent = p.PurchaseEvent ?? "in_app_purchase";
         var nux = p.NuxEvents ?? [];
         var cells = data.Cohorts(projectId, "all", f.Start, f.End);
@@ -325,8 +325,8 @@ public sealed partial class AnalyticsEngine
         else
             steps.AddRange(
             [
-                new("tutorial_begin", "Tutorial started", hasGa && tutorialBegin is not null ? Ev(tutorialBegin) : null, "GA4 " + (tutorialBegin ?? "tutorial_begin"), "onboarding",
-                    tutorialBegin is null ? "No tutorial_begin event found. Add your first-time player events in Project settings." : null),
+                new("tutorial_begin", "Tutorial started", hasGa && tutorialBegin is not null ? Ev(tutorialBegin) : null, "GA4 " + p.TutorialStart, "onboarding",
+                    tutorialBegin is null ? $"No {p.TutorialStart} events found. Set the tutorial start event, or your first-time player events, in Project settings." : null),
                 new("tutorial_complete", "Tutorial completed", hasGa && tutorialEvent is not null ? Ev(tutorialEvent) : null, "GA4 " + (tutorialEvent ?? "(not configured)"), "onboarding",
                     tutorialEvent is null ? "Set the tutorial completion event, or your first-time player events, in Project settings." : null),
             ]);

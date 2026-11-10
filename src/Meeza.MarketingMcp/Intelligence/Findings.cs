@@ -219,7 +219,7 @@ public sealed partial class AnalyticsEngine
                 // points at that step instead of assuming the tutorial is too long.
                 var path = (p.NuxEvents is { Count: > 0 } nux
                         ? nux.Select(s => (Event: s.Event, Label: s.Label ?? s.Event))
-                        : new[] { ("tutorial_begin", "tutorial_begin"), ("tutorial_step", "tutorial_step"), (tutorial, tutorial) })
+                        : new[] { (p.TutorialStart, p.TutorialStart), ("tutorial_step", "tutorial_step"), (tutorial, tutorial) })
                     .Where(s => events.ContainsKey(s.Event)).DistinctBy(s => s.Event).ToList();
                 if (!path.Any(s => s.Event == tutorial)) path.Add((tutorial, tutorial));
                 var losses = new List<(string From, string To, long Lost, long Base)>();

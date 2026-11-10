@@ -253,5 +253,9 @@ public static class Migrations
         CREATE INDEX ix_tasks_status ON tasks(project_id, status);
         CREATE INDEX ix_tasks_finding ON tasks(project_id, finding_key);
         """),
+        (5, """
+        -- GA4 event that marks the start of the tutorial (funnel step). NULL = tutorial_begin.
+        ALTER TABLE projects ADD COLUMN tutorial_start_event TEXT;
+        """),
     ];
 }

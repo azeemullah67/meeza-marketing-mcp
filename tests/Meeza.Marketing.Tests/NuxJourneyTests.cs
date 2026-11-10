@@ -102,6 +102,36 @@ public class NuxJourneyTests
     }
 
     [Fact]
+    public void A_custom_tutorial_start_event_is_saved_and_used_by_the_funnel_and_the_check()
+    {
+        using var t = new TestDb();
+        Assert.Throws<ArgumentException>(() => t.Projects.Create(new Project { Name = "X", TutorialStartEvent = "tutorial start" }));
+        var p = t.Projects.Create(new Project { Name = "Gapsy", TimeZone = "UTC", TutorialStartEvent = " ftue_start ", TutorialEvent = "ftue_done", Connections = [TestDb.Ga4Conn] });
+        Assert.Equal("ftue_start", t.Projects.Require(p.Id).TutorialStartEvent);
+        // An update that leaves it empty goes back to the default.
+        Assert.Equal("tutorial_begin", t.Projects.Update(p.Id, t.Projects.Require(p.Id) with { TutorialStartEvent = null }).TutorialStart);
+        t.Projects.Update(p.Id, t.Projects.Require(p.Id) with { TutorialStartEvent = "ftue_start" });
+
+        var today = TimeZones.Today("UTC");
+        var f = new Filters(today.AddDays(-7), today.AddDays(-1));
+        var d = today.AddDays(-2);
+        var scope = new Dictionary<string, object?> { ["project_id"] = p.Id, ["property_id"] = "123456789" };
+        t.Facts.ReplaceWindow("ga4_events_daily", scope, "date", f.Start, f.End, new[]
+        {
+            new Ga4EventRow(d, "first_open", 200, 200), new Ga4EventRow(d, "ftue_start", 120, 120), new Ga4EventRow(d, "ftue_done", 80, 80),
+            new Ga4EventRow(d, "tutorial_begin", 5, 5), // a stray standard event must not be used
+        });
+        t.Facts.ReplaceWindow("ga4_daily", scope, "date", f.Start, f.End, [new Ga4DailyRow(d, 200, 200, null, null, null, null, null, null, null, null, "USD")]);
+        var e = new AnalyticsEngine(t.Projects, t.Syncs, t.Data, new SyncEngine(t.Projects, t.Syncs, [], NullLogger<SyncEngine>.Instance));
+        var started = JsonSerializer.SerializeToElement(e.Funnel(p.Id, f), Meeza.Marketing.Shared.Utilities.Json.Output)
+            .GetProperty("steps").EnumerateArray().Single(s => s.GetProperty("key").GetString() == "tutorial_begin");
+        Assert.Equal((120, "GA4 ftue_start"), (started.GetProperty("value").GetInt64(), started.GetProperty("source").GetString()));
+
+        var finding = e.Findings(p.Id, f).Single(x => x.Id == "funnel-tutorial");
+        Assert.Contains("never reach ftue_start", finding.Action); // 80 of 200 lost before ftue_start
+    }
+
+    [Fact]
     public void Missing_journey_event_is_unavailable_with_a_fix()
     {
         using var t = new TestDb();
