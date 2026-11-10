@@ -35,6 +35,9 @@ public sealed record Ga4Event(DateOnly Date, string EventName, long? EventCount,
 
 public sealed record CohortCell(string SegmentType, string SegmentValue, DateOnly CohortDate, int DayN, long ActiveUsers, long CohortUsers);
 
+/// <summary>One UTC day of Adjust installs for the project, split into organic and paid (any non-organic network).</summary>
+public sealed record AdjustInstallDay(DateOnly Date, long Installs, long OrganicInstalls, long MetaInstalls, long GoogleInstalls);
+
 public sealed record CreativeMeta(
     string Platform, string AccountId, string CreativeKey, string? AdId, string? AssetId, string? Name, string? Format, string? FieldType,
     string? PreviewUrl, string? ThumbnailUrl, string? VideoId, decimal? DurationSeconds, string? Title, string? Body, string? PerformanceLabel);
@@ -125,6 +128,35 @@ public sealed class ProjectData(MarketingDb db)
             GROUP BY segment_type, segment_value, cohort_date, day_n
             """, new { projectId, segmentType, start, end }, r => new CohortCell(r.Str("segment_type")!, r.Str("segment_value")!,
                 Db.Date(r.Str("cohort_date")!), (int)r.Long("day_n")!.Value, r.Long("active_users") ?? 0, r.Long("cohort_users") ?? 0));
+    }
+
+    /// <summary>Adjust install-cohort cells summed across the project's Adjust apps. Segment types: all, network, campaign, country, platform.</summary>
+    public IReadOnlyList<CohortCell> AdjustCohorts(string projectId, string segmentType, DateOnly start, DateOnly end)
+    {
+        using var c = db.Open();
+        return c.Query("""
+            SELECT segment_type, segment_value, cohort_date, day_n, SUM(active_users) AS active_users, SUM(cohort_users) AS cohort_users
+            FROM adjust_cohorts WHERE project_id=@projectId AND segment_type=@segmentType AND cohort_date BETWEEN @start AND @end
+            GROUP BY segment_type, segment_value, cohort_date, day_n
+            """, new { projectId, segmentType, start, end }, r => new CohortCell(r.Str("segment_type")!, r.Str("segment_value")!,
+                Db.Date(r.Str("cohort_date")!), (int)r.Long("day_n")!.Value, r.Long("active_users") ?? 0, r.Long("cohort_users") ?? 0));
+    }
+
+    /// <summary>
+    /// Adjust installs per day. Network buckets use Adjust's partner names (Organic, Facebook / Instagram / Meta, Google Ads ...).
+    /// </summary>
+    public IReadOnlyList<AdjustInstallDay> AdjustInstalls(string projectId, DateOnly start, DateOnly end)
+    {
+        using var c = db.Open();
+        return c.Query("""
+            SELECT date,
+                   SUM(installs) AS installs,
+                   SUM(CASE WHEN lower(network) LIKE '%organic%' THEN installs ELSE 0 END) AS organic,
+                   SUM(CASE WHEN lower(network) LIKE '%facebook%' OR lower(network) LIKE '%instagram%' OR lower(network) LIKE '%meta%' THEN installs ELSE 0 END) AS meta,
+                   SUM(CASE WHEN lower(network) LIKE '%google%' AND lower(network) NOT LIKE '%organic%' THEN installs ELSE 0 END) AS google
+            FROM adjust_campaign_daily WHERE project_id=@projectId AND date BETWEEN @start AND @end
+            GROUP BY date
+            """, new { projectId, start, end }, r => new AdjustInstallDay(Db.Date(r.Str("date")!), r.Long("installs") ?? 0, r.Long("organic") ?? 0, r.Long("meta") ?? 0, r.Long("google") ?? 0));
     }
 
     /// <summary>Distinct filter values present in the project's data (for filter dropdowns).</summary>

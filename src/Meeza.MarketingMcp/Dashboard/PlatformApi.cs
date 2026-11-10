@@ -68,6 +68,10 @@ public static class PlatformApi
 
         app.MapGet(g + "/discover", (CancellationToken ct) => Handle(() => DiscoverAsync(sp, ct)));
 
+        // Event names a GA4 property received in the last 28 days, most-used first. Lets the project form offer the
+        // game's real events as first-time player (NUX) steps instead of asking people to type names from memory.
+        app.MapGet(g + "/ga4-events", (HttpRequest r, CancellationToken ct) => Handle(() => Ga4EventsAsync(sp, r.Query["property"].ToString(), ct)));
+
         // ---- analytics views (GET, computed from the store)
         app.MapGet(g + "/projects/{id}/filters", (string id) => Handle(() => Task.FromResult(engine.Data.FilterOptions(projects.Require(id).Id))));
         app.MapGet(g + "/projects/{id}/overview", (string id, HttpRequest r) => View(projects, id, r, (p, f) => engine.Overview(p.Id, f)));
@@ -138,7 +142,7 @@ public static class PlatformApi
 
     /// <summary>
     /// A project may only link accounts inside the configured allow-lists (META_AD_ACCOUNT_IDS, GOOGLE_ADS_CUSTOMER_IDS,
-    /// GA4_PROPERTY_IDS, PLAY_PACKAGE_NAMES). Checked at save time so an excluded account can never be scheduled for sync.
+    /// GA4_PROPERTY_IDS, ADJUST_APP_TOKENS, PLAY_PACKAGE_NAMES). Checked at save time so an excluded account can never be scheduled for sync.
     /// </summary>
     private static void EnsureAllowed(IServiceProvider sp, IEnumerable<ProjectConnection> connections)
     {
@@ -146,6 +150,7 @@ public static class PlatformApi
         var google = sp.GetRequiredService<GoogleAdsPlatform>().Client.Options.CustomerIds;
         var ga4 = sp.GetRequiredService<AnalyticsService>().AllowedPropertyIds;
         var play = sp.GetRequiredService<PlayConsoleService>().Client.Options.PackageNames;
+        var adjust = sp.GetRequiredService<Meeza.Marketing.Adjust.AdjustService>().AllowedAppTokens;
         foreach (var c in connections)
         {
             switch (c.Integration)
@@ -158,6 +163,9 @@ public static class PlatformApi
                     break;
                 case Integrations.Ga4:
                     Check(ga4, AnalyticsOptions.NormalizePropertyId(c.ExternalId), AnalyticsOptions.Platform, "GA4_PROPERTY_IDS");
+                    break;
+                case Integrations.Adjust:
+                    Check(adjust, Meeza.Marketing.Adjust.AdjustOptions.NormalizeAppToken(c.ExternalId), Meeza.Marketing.Adjust.AdjustOptions.Platform, "ADJUST_APP_TOKENS");
                     break;
                 case Integrations.GooglePlay:
                     Check(play, c.ExternalId.Trim(), PlayConsoleOptions.Platform, "PLAY_PACKAGE_NAMES");
@@ -232,6 +240,7 @@ public static class PlatformApi
         var meta = sp.GetRequiredService<MetaAdsPlatform>();
         var ga4 = sp.GetRequiredService<AnalyticsService>();
         var play = sp.GetRequiredService<PlayConsoleService>();
+        var adjust = sp.GetRequiredService<Meeza.Marketing.Adjust.AdjustService>();
         var tasks = new[]
         {
             Try(Integrations.GoogleAds, google.IsConfigured, google.ConfigurationHint, async () => (await google.GetAccountsAsync(ct)).Where(a => a.IsManager != true)
@@ -240,10 +249,41 @@ public static class PlatformApi
                 .Select(a => (object)new { id = a.AccountId, name = a.Name, currency = a.Currency, timeZone = a.TimeZone })),
             Try(Integrations.Ga4, ga4.IsConfigured, AnalyticsOptions.Hint, async () => (await ga4.GetPropertiesAsync(ct))
                 .Select(x => (object)new { id = x.PropertyId, name = x.DisplayName, account = x.AccountName, apps = x.Apps })),
+            Try(Integrations.Adjust, adjust.IsConfigured, Meeza.Marketing.Adjust.AdjustOptions.Hint, async () => (await adjust.GetAppsAsync(ct))
+                // No currency / time zone: they would pre-fill the project's (Adjust reports in a chosen currency, on UTC days).
+                .Select(a => (object)new { id = a.AppToken, name = a.Name })),
             Try(Integrations.GooglePlay, play.IsConfigured, PlayConsoleOptions.Hint, async () => (await play.GetAppsAsync(ct))
                 .Select(a => (object)new { id = a.PackageName, name = a.DisplayName })),
         };
         return new { integrations = await Task.WhenAll(tasks).ConfigureAwait(false) };
+    }
+
+    private static async Task<object> Ga4EventsAsync(IServiceProvider sp, string property, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(property)) throw new ArgumentException("Pick a GA4 property first.");
+        var ga4 = sp.GetRequiredService<AnalyticsService>();
+        if (!ga4.IsConfigured) throw new PlatformNotConfiguredException(AnalyticsOptions.Platform, AnalyticsOptions.Hint);
+        // RunReportAsync checks the property against GA4_PROPERTY_IDS before any request.
+        var rep = await ga4.RunReportAsync(property, new
+        {
+            dateRanges = new[] { new { startDate = "28daysAgo", endDate = "yesterday" } },
+            dimensions = new[] { new { name = "eventName" } },
+            metrics = new[] { new { name = "totalUsers" }, new { name = "eventCount" } },
+            orderBys = new[] { new { metric = new { metricName = "totalUsers" }, desc = true } },
+            limit = 300,
+        }, ct).ConfigureAwait(false);
+        return new
+        {
+            property = AnalyticsOptions.NormalizePropertyId(property),
+            range = "last 28 days",
+            events = rep.Rows.Select(row => new
+            {
+                name = rep.Dimension(row, "eventName"),
+                users = rep.Metric(row, "totalUsers") is { } u ? (long)u : 0,
+                count = rep.Metric(row, "eventCount") is { } c ? (long)c : 0,
+            // GA4 reports "(not set)" for hits without a name; only real event names can be journey steps.
+            }).Where(e => e.name is { Length: > 0 } n && System.Text.RegularExpressions.Regex.IsMatch(n, "^[A-Za-z][A-Za-z0-9_]{0,39}$")).ToArray(),
+        };
     }
 
     // ---------------------------------------------------------------- request bodies
@@ -263,6 +303,8 @@ public static class PlatformApi
         public string? Objectives { get; set; }
         public string? TutorialEvent { get; set; }
         public string? PurchaseEvent { get; set; }
+        /// <summary>Null = keep the saved journey (on update); an empty list clears it.</summary>
+        public List<NuxStepInput>? NuxEvents { get; set; }
         public int? BackfillDays { get; set; }
         public int? SyncIntervalMinutes { get; set; }
         public bool? Archived { get; set; }
@@ -274,9 +316,16 @@ public static class PlatformApi
             Name = Name ?? "", Genre = Genre, Platforms = Platforms, AndroidStoreUrl = AndroidStoreUrl, IosStoreUrl = IosStoreUrl,
             TargetCountries = TargetCountries, Monetization = Monetization, Currency = Currency, TimeZone = TimeZone, LaunchStage = LaunchStage,
             Objectives = Objectives, TutorialEvent = TutorialEvent, PurchaseEvent = PurchaseEvent, BackfillDays = BackfillDays ?? 90,
+            NuxEvents = NuxEvents?.Select(s => new NuxStep(s.Event ?? "", s.Label)).ToList(),
             SyncIntervalMinutes = SyncIntervalMinutes ?? 60, Archived = Archived ?? false,
             Connections = Connections?.Select(c => c.ToConnection()).ToList() ?? [],
         };
+    }
+
+    public sealed class NuxStepInput
+    {
+        public string? Event { get; set; }
+        public string? Label { get; set; }
     }
 
     public sealed class ConnectionInput

@@ -546,6 +546,7 @@
         "type": "Project",
         "dependencies": {
           "Anthropic": "[13.6.0, )",
+          "Meeza.Marketing.Adjust": "[1.0.0, )",
           "Meeza.Marketing.Analytics": "[1.0.0, )",
           "Meeza.Marketing.GoogleAds": "[1.0.0, )",
           "Meeza.Marketing.Meta": "[1.0.0, )",
@@ -554,6 +555,12 @@
           "Microsoft.Data.Sqlite": "[10.0.14, )",
           "Microsoft.Extensions.Hosting": "[10.0.14, )",
           "ModelContextProtocol": "[2.3.1, )"
+        }
+      },
+      "meeza.marketing.adjust": {
+        "type": "Project",
+        "dependencies": {
+          "Meeza.Marketing.Shared": "[1.0.0, )"
         }
       },
       "meeza.marketing.analytics": {

@@ -15,7 +15,7 @@ Nothing here can change a campaign, budget or bid. Every answer must come from a
    (`open_dashboard`) or the setup guides. Do not guess numbers for an unconnected platform.
 3. If the user has projects (`list_projects` returns any), prefer the `get_project_*` tools: they use a synchronized
    local history with freshness tracking and are faster and comparable over time. Fall back to the live
-   `meta_*` / `google_ads_*` / `ga4_*` / `play_*` tools when there is no project or the user wants raw platform data.
+   `meta_*` / `google_ads_*` / `ga4_*` / `adjust_*` / `play_*` tools when there is no project or the user wants raw platform data.
 
 ## Picking the tool
 
@@ -31,6 +31,7 @@ Nothing here can change a campaign, budget or bid. Every answer must come from a
 | This week vs last week | `compare_periods` |
 | "Anything wrong right now?" | `get_marketing_alerts`, `get_project_findings` |
 | Retention D1/D7/D30, cohorts | `ga4_get_retention`, `get_project_retention` |
+| Retention or installs by network / campaign / creative (incl. Meta) | `adjust_get_retention`, `adjust_get_performance`, `get_project_retention` with `adjust_*` segments |
 | "Can this game work?" / soft-launch verdict | `get_game_scorecard` |
 | Where players quit (levels) | `ga4_get_level_progression` |
 | Funnel from impression to purchase | `get_project_funnel` |
@@ -109,5 +110,5 @@ claude mcp add meeza-marketing -- <path>/publish/meeza-marketing-mcp.exe
 
 Connect accounts in the dashboard (`meeza-marketing-mcp dashboard`): Meta System User token with `ads_read`,
 Google Ads service account or OAuth, GA4 service account with Viewer access, Play Console service account.
-Allow-lists (`META_AD_ACCOUNT_IDS`, `GOOGLE_ADS_CUSTOMER_IDS`, `GA4_PROPERTY_IDS`, `PLAY_PACKAGE_NAMES`) limit
+Allow-lists (`META_AD_ACCOUNT_IDS`, `GOOGLE_ADS_CUSTOMER_IDS`, `GA4_PROPERTY_IDS`, `ADJUST_APP_TOKENS`, `PLAY_PACKAGE_NAMES`) limit
 what the server may read. Details in `docs/` of the repository.

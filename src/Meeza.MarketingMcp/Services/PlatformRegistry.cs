@@ -13,7 +13,7 @@ public sealed class PlatformRegistry(MetaAdsPlatform meta, GoogleAdsPlatform goo
     public IReadOnlyList<IAdPlatform> AdPlatforms { get; } = [meta, googleAds];
     public PlayConsoleService Play => play;
 
-    public static readonly string[] KnownPlatforms = [MetaAdsOptions.Platform, GoogleAdsOptions.Platform, PlayConsoleOptions.Platform, Meeza.Marketing.Analytics.AnalyticsOptions.Platform];
+    public static readonly string[] KnownPlatforms = [MetaAdsOptions.Platform, GoogleAdsOptions.Platform, PlayConsoleOptions.Platform, Meeza.Marketing.Analytics.AnalyticsOptions.Platform, Meeza.Marketing.Adjust.AdjustOptions.Platform];
 
     /// <summary>Parses a platform filter such as "meta,google_ads". Null/empty means all.</summary>
     public IReadOnlyList<IAdPlatform> Select(string? platforms)

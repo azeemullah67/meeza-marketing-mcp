@@ -45,7 +45,7 @@ public sealed class ProjectTools(ProjectStore projects, AnalyticsEngine engine, 
         Run("get_project_findings", () => engine.Findings(projectId, F(projectId, datePreset, startDate, endDate)));
 
     [McpServerTool(Name = "get_project_retention", ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Exact-day D0-D30 cohort retention: heatmap with maturity per cell, blended mature curve, previous-period curve, per-segment curves, churn trend, new vs returning users. Segments: all, country, platform, channel, campaign, ad_group.")]
+    [Description("Exact-day D0-D30 cohort retention: heatmap with maturity per cell, blended mature curve, previous-period curve, per-segment curves, churn trend, new vs returning users. Segments (GA4): all, country, platform, channel, campaign, ad_group. Segments (Adjust install cohorts, when an Adjust app is linked): adjust_all, adjust_network, adjust_campaign, adjust_country, adjust_platform. A project with Adjust but no GA4 uses Adjust for all/country/platform/campaign.")]
     public Task<string> Retention([Description(ProjectHelp)] string projectId, string segmentType = "all", string? segmentValue = null,
         [Description(DateHelp)] string? datePreset = "last_30_days", string? startDate = null, string? endDate = null) =>
         Run("get_project_retention", () => engine.Retention(projectId, F(projectId, datePreset, startDate, endDate), segmentType, segmentValue, "exact"));

@@ -181,5 +181,47 @@ public static class Migrations
             created_at TEXT NOT NULL, finished_at TEXT
         );
         """),
+        (2, """
+        -- Adjust (MMP) daily totals per app. Installs are Adjust-attributed (first attribution, deduplicated across
+        -- networks); cost and revenue are converted by Adjust into `currency`. Dates are UTC days.
+        CREATE TABLE adjust_daily(
+            project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            app_token TEXT NOT NULL, date TEXT NOT NULL,
+            installs INTEGER, clicks INTEGER, impressions INTEGER, sessions INTEGER, daus INTEGER,
+            cost REAL, revenue REAL, ad_revenue REAL, all_revenue REAL,
+            currency TEXT NOT NULL,
+            synced_at TEXT NOT NULL,
+            PRIMARY KEY(project_id, app_token, date)
+        );
+
+        -- Adjust daily facts by network x campaign x country x platform. campaign_id is the network's own campaign id
+        -- (Meta / Google Ads campaign id) or '' when unknown, e.g. organic.
+        CREATE TABLE adjust_campaign_daily(
+            project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            app_token TEXT NOT NULL, date TEXT NOT NULL,
+            network TEXT NOT NULL, campaign_id TEXT NOT NULL, campaign_name TEXT NOT NULL, country TEXT NOT NULL, platform TEXT NOT NULL,
+            installs INTEGER, clicks INTEGER, impressions INTEGER, sessions INTEGER,
+            cost REAL, all_revenue REAL,
+            currency TEXT NOT NULL,
+            synced_at TEXT NOT NULL,
+            PRIMARY KEY(project_id, app_token, date, network, campaign_id, campaign_name, country, platform)
+        );
+        CREATE INDEX ix_adjust_campaign_date ON adjust_campaign_daily(project_id, date);
+
+        -- Adjust install cohorts: users of cohort_date (install day) active on day_n (retained_users_dN) and the
+        -- cohort's installs. Only days the cohort has fully reached are stored.
+        CREATE TABLE adjust_cohorts(
+            project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            app_token TEXT NOT NULL, segment_type TEXT NOT NULL, segment_value TEXT NOT NULL,
+            cohort_date TEXT NOT NULL, day_n INTEGER NOT NULL,
+            active_users INTEGER NOT NULL, cohort_users INTEGER NOT NULL,
+            synced_at TEXT NOT NULL,
+            PRIMARY KEY(project_id, app_token, segment_type, segment_value, cohort_date, day_n)
+        );
+        """),
+        (3, """
+        -- First-time player (NUX) journey: JSON array of {"e": GA4 event name, "l": optional label}, in journey order.
+        ALTER TABLE projects ADD COLUMN nux_events TEXT;
+        """),
     ];
 }

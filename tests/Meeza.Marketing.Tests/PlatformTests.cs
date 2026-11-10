@@ -93,9 +93,10 @@ public class StorageTests
     public void Migrations_create_schema_and_are_idempotent()
     {
         using var t = new TestDb();
-        Assert.Equal(1, t.Db.SchemaVersion);
+        var latest = Migrations.All.Max(m => m.Version);
+        Assert.Equal(latest, t.Db.SchemaVersion);
         var again = new MarketingDb(t.Path); // re-open runs migrations again: must be a no-op
-        Assert.Equal(1, again.SchemaVersion);
+        Assert.Equal(latest, again.SchemaVersion);
     }
 
     [Fact]

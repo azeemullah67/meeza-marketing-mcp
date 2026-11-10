@@ -226,7 +226,7 @@ public class PlayReportsTests
 public class ReadOnlyGuaranteeTests
 {
     public static IEnumerable<object[]> ToolMethods() =>
-        new[] { typeof(UnifiedReportingTools), typeof(DashboardTools), typeof(BenchmarkTools), typeof(InsightTools), typeof(GrowthTools), typeof(Meeza.Marketing.Analytics.AnalyticsTools), typeof(MetaAdsTools), typeof(GoogleAdsTools), typeof(PlayConsoleTools) }
+        new[] { typeof(UnifiedReportingTools), typeof(DashboardTools), typeof(BenchmarkTools), typeof(InsightTools), typeof(GrowthTools), typeof(Meeza.Marketing.Analytics.AnalyticsTools), typeof(Meeza.Marketing.Adjust.AdjustTools), typeof(MetaAdsTools), typeof(GoogleAdsTools), typeof(PlayConsoleTools) }
             .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
             .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() is not null)
             .Select(m => new object[] { $"{m.DeclaringType!.Name}.{m.Name}" });
@@ -236,7 +236,7 @@ public class ReadOnlyGuaranteeTests
     public void Every_tool_is_annotated_read_only(string method)
     {
         var parts = method.Split('.');
-        var type = new[] { typeof(UnifiedReportingTools), typeof(DashboardTools), typeof(BenchmarkTools), typeof(InsightTools), typeof(GrowthTools), typeof(Meeza.Marketing.Analytics.AnalyticsTools), typeof(MetaAdsTools), typeof(GoogleAdsTools), typeof(PlayConsoleTools) }.Single(t => t.Name == parts[0]);
+        var type = new[] { typeof(UnifiedReportingTools), typeof(DashboardTools), typeof(BenchmarkTools), typeof(InsightTools), typeof(GrowthTools), typeof(Meeza.Marketing.Analytics.AnalyticsTools), typeof(Meeza.Marketing.Adjust.AdjustTools), typeof(MetaAdsTools), typeof(GoogleAdsTools), typeof(PlayConsoleTools) }.Single(t => t.Name == parts[0]);
         var attr = type.GetMethod(parts[1])!.GetCustomAttribute<McpServerToolAttribute>()!;
         Assert.True(attr.ReadOnly);
         Assert.False(attr.Destructive);
@@ -246,7 +246,7 @@ public class ReadOnlyGuaranteeTests
     public void No_tool_name_suggests_a_write_operation()
     {
         var names = ToolMethods().Select(m => (string)m[0]).ToArray();
-        Assert.Equal(41, names.Length);   // 41 since ga4_get_level_progression (2026-11-09)
+        Assert.Equal(44, names.Length);   // 44 since adjust_list_apps / adjust_get_performance / adjust_get_retention (2026-11-10)
         var writeVerbs = new[] { "Create", "Update", "Delete", "Pause", "Set", "Mutate", "Reply", "Edit" };
         // OpenDashboard only opens a local read-only view.
         Assert.DoesNotContain(names, n => writeVerbs.Any(v => n.Split('.')[1].StartsWith(v)));

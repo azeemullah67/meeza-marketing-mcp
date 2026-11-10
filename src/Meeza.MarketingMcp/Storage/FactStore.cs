@@ -35,6 +35,16 @@ public sealed record Ga4EventRow(DateOnly Date, string EventName, long? EventCou
 
 public sealed record Ga4CohortRow(string SegmentType, string SegmentValue, DateOnly CohortDate, int DayN, long ActiveUsers, long CohortUsers);
 
+public sealed record AdjustDailyRow(
+    DateOnly Date, long? Installs, long? Clicks, long? Impressions, long? Sessions, long? Daus,
+    decimal? Cost, decimal? Revenue, decimal? AdRevenue, decimal? AllRevenue, string Currency);
+
+public sealed record AdjustCampaignDailyRow(
+    DateOnly Date, string Network, string CampaignId, string CampaignName, string Country, string Platform,
+    long? Installs, long? Clicks, long? Impressions, long? Sessions, decimal? Cost, decimal? AllRevenue, string Currency);
+
+public sealed record AdjustCohortRow(string SegmentType, string SegmentValue, DateOnly CohortDate, int DayN, long ActiveUsers, long CohortUsers);
+
 public sealed record ReachWindowRow(DateOnly WindowStart, DateOnly WindowEnd, long? Reach, long? Impressions, decimal? Frequency);
 
 /// <summary>Result of replacing one window of facts.</summary>
@@ -131,7 +141,8 @@ public sealed class FactStore(MarketingDb db)
     };
 
     private static readonly HashSet<string> Tables =
-        ["ad_daily", "campaign_country_daily", "asset_daily", "creatives", "reach_windows", "ga4_daily", "ga4_dim_daily", "ga4_events_daily", "ga4_cohorts"];
+        ["ad_daily", "campaign_country_daily", "asset_daily", "creatives", "reach_windows", "ga4_daily", "ga4_dim_daily", "ga4_events_daily", "ga4_cohorts",
+         "adjust_daily", "adjust_campaign_daily", "adjust_cohorts"];
 
     private static void Guard(string table)
     {

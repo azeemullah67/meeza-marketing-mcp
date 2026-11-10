@@ -1,3 +1,4 @@
+using Meeza.Marketing.Adjust;
 using Meeza.Marketing.Analytics;
 using Meeza.Marketing.GoogleAds;
 using Meeza.Marketing.Meta;
@@ -11,10 +12,11 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 const string ServerInstructions = """
-    Meeza Marketing MCP gives read-only access to the user's own Meta Ads, Google Ads, Google Play Console and Google Analytics 4 / Firebase data.
+    Meeza Marketing MCP gives read-only access to the user's own Meta Ads, Google Ads, Google Play Console, Google Analytics 4 / Firebase and Adjust data.
     Start with list_projects: each game project has synchronized, stored data and the get_project_* tools analyse it
     (overview, findings, retention, campaigns, creatives, funnel, attribution, forecast). Prefer them for analysis;
-    use the platform tools (meta_*, google_ads_*, ga4_*, play_*) for live lookups. get_connected_accounts shows credentials.
+    use the platform tools (meta_*, google_ads_*, ga4_*, play_*, adjust_*) for live lookups. Adjust (an MMP) gives
+    deduplicated installs and retention per network / campaign / creative, which GA4 cannot attribute for Meta. get_connected_accounts shows credentials.
     When the user wants to see or browse their data visually, call open_dashboard: it opens a live local dashboard.
     For "can this game work?" use get_game_scorecard (retention + CPI + estimated LTV). For "analytics shows fewer users
     than expected" use check_analytics_tracking.
@@ -23,7 +25,8 @@ const string ServerInstructions = """
     - Never add amounts in different currencies; amounts are in each account's original currency.
     - null means unavailable, not zero.
     - Ad-platform installs are self-attributed and can overlap between Meta and Google Ads; Play Console installs are
-      store-reported (organic + paid). Never sum installs from different sources.
+      store-reported (organic + paid); Adjust installs are deduplicated by Adjust. Never sum installs from different sources.
+    - Adjust cost is the same money as Meta / Google Ads spend, seen through Adjust. Never add it to ad-platform spend.
     - Read the notes and errors arrays in every response and surface important caveats to the user.
     """;
 
@@ -62,6 +65,7 @@ builder.Services
     .WithTools<InsightTools>()
     .WithTools<GrowthTools>()
     .WithTools<AnalyticsTools>()
+    .WithTools<AdjustTools>()
     .WithTools<MetaAdsTools>()
     .WithTools<GoogleAdsTools>()
     .WithTools<PlayConsoleTools>()

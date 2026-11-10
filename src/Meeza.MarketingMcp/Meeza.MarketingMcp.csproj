@@ -6,6 +6,7 @@
     <ProjectReference Include="..\Meeza.Marketing.GoogleAds\Meeza.Marketing.GoogleAds.csproj" />
     <ProjectReference Include="..\Meeza.Marketing.PlayConsole\Meeza.Marketing.PlayConsole.csproj" />
     <ProjectReference Include="..\Meeza.Marketing.Analytics\Meeza.Marketing.Analytics.csproj" />
+    <ProjectReference Include="..\Meeza.Marketing.Adjust\Meeza.Marketing.Adjust.csproj" />
   </ItemGroup>
 
   <ItemGroup>

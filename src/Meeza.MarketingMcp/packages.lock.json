@@ -441,6 +441,12 @@
           "System.Text.Encodings.Web": "10.0.14"
         }
       },
+      "meeza.marketing.adjust": {
+        "type": "Project",
+        "dependencies": {
+          "Meeza.Marketing.Shared": "[1.0.0, )"
+        }
+      },
       "meeza.marketing.analytics": {
         "type": "Project",
         "dependencies": {

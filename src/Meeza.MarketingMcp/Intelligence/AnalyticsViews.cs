@@ -1,3 +1,4 @@
+using Meeza.Marketing.Adjust;
 using System.Text.RegularExpressions;
 using Meeza.Marketing.Shared.Models;
 using Meeza.MarketingMcp.Storage;
@@ -18,37 +19,47 @@ public sealed partial class AnalyticsEngine
     {
         var p = projects.Require(projectId);
         var today = Today(p);
+        var allStatus = Status(p);
+        var hasGa4 = allStatus.Any(s => s.Integration == Integrations.Ga4);
+        var hasAdjust = allStatus.Any(s => s.Integration == Integrations.Adjust);
         if (mode == "rolling")
             return new
             {
-                available = false, mode,
+                available = false, mode, sources = new { ga4 = hasGa4, adjust = hasAdjust },
                 reason = "Rolling retention (active on day N or any later day) needs user-level event data, e.g. the GA4 BigQuery export. The GA4 Data API only provides exact-day cohort activity, so rolling retention is not shown rather than approximated.",
             };
         if (segmentType == "creative")
             return new
             {
-                available = false, mode, segmentType,
+                available = false, mode, segmentType, sources = new { ga4 = hasGa4, adjust = hasAdjust },
                 reason = "Retention by creative needs install attribution that links each user to the ad creative (an MMP such as AppsFlyer/Adjust, or Firebase-linked creative parameters). Google Ads and Meta do not pass the creative to GA4, so it is unavailable rather than guessed.",
             };
-        if (!Sync.Ga4Syncer.CohortSegments.ContainsKey(segmentType))
-            throw new ArgumentException($"Unknown segment '{segmentType}'. Use: {string.Join(", ", Sync.Ga4Syncer.CohortSegments.Keys)}, creative.");
+        // "adjust_<segment>" reads Adjust install cohorts. A project with Adjust but no GA4 reads Adjust for the shared segments too.
+        var useAdjust = segmentType.StartsWith(AdjustPrefix, StringComparison.Ordinal)
+            || !hasGa4 && hasAdjust && Sync.AdjustSyncer.CohortSegments.ContainsKey(segmentType);
+        var seg = segmentType.StartsWith(AdjustPrefix, StringComparison.Ordinal) ? segmentType[AdjustPrefix.Length..] : segmentType;
+        if (useAdjust ? !Sync.AdjustSyncer.CohortSegments.ContainsKey(seg) : !Sync.Ga4Syncer.CohortSegments.ContainsKey(seg))
+            throw new ArgumentException($"Unknown segment '{segmentType}'. Use: {string.Join(", ", Sync.Ga4Syncer.CohortSegments.Keys)}, creative, or {string.Join(", ", Sync.AdjustSyncer.CohortSegments.Keys.Select(k => AdjustPrefix + k))}.");
+        IReadOnlyList<CohortCell> Load(DateOnly start, DateOnly end) => useAdjust ? data.AdjustCohorts(projectId, seg, start, end) : data.Cohorts(projectId, seg, start, end);
 
-        var cells = data.Cohorts(projectId, segmentType, f.Start, f.End);
-        var selected = segmentValue is null || segmentType == "all" ? cells : cells.Where(c => string.Equals(c.SegmentValue, segmentValue, StringComparison.OrdinalIgnoreCase)).ToArray();
+        var cells = Load(f.Start, f.End);
+        var selected = segmentValue is null || seg == "all" ? cells : cells.Where(c => string.Equals(c.SegmentValue, segmentValue, StringComparison.OrdinalIgnoreCase)).ToArray();
         var heat = RetentionAnalytics.Heatmap(selected, today);
         var curve = RetentionAnalytics.Curve(selected, today);
         var curveProvisional = RetentionAnalytics.Curve(selected, today, includeProvisional: true);
-        var segments = segmentType == "all" ? [] : RetentionAnalytics.BySegment(cells, today);
-        var prev = RetentionAnalytics.Curve(data.Cohorts(projectId, segmentType, f.Previous().Start, f.Previous().End)
-            .Where(c => segmentValue is null || segmentType == "all" || string.Equals(c.SegmentValue, segmentValue, StringComparison.OrdinalIgnoreCase)), today);
+        var segments = seg == "all" ? [] : RetentionAnalytics.BySegment(cells, today);
+        var prev = RetentionAnalytics.Curve(Load(f.Previous().Start, f.Previous().End)
+            .Where(c => segmentValue is null || seg == "all" || string.Equals(c.SegmentValue, segmentValue, StringComparison.OrdinalIgnoreCase)), today);
         var ga = data.Ga4Daily(projectId, f.Start, f.End).GroupBy(d => d.Date).OrderBy(g => g.Key)
             .Select(g => new { date = g.Key, newUsers = g.Sum(x => x.NewUsers ?? 0), returningUsers = g.Sum(x => Math.Max(0, (x.ActiveUsers ?? 0) - (x.NewUsers ?? 0))), activeUsers = g.Sum(x => x.ActiveUsers ?? 0) })
             .ToArray();
-        var status = Status(p).Where(s => s.Integration == Integrations.Ga4).ToArray();
+        var status = allStatus.Where(s => s.Integration == (useAdjust ? Integrations.Adjust : Integrations.Ga4)).ToArray();
         var (updated, freshness) = Oldest(status);
         return new
         {
-            available = status.Length > 0, mode = "exact", segmentType, segmentValue, range = f.Range, today = Db.Iso(today), lastUpdated = updated, freshness,
+            available = status.Length > 0, mode = "exact", segmentType, segmentValue,
+            source = useAdjust ? "adjust" : "ga4", sources = new { ga4 = hasGa4, adjust = hasAdjust },
+            reason = status.Length > 0 ? null : useAdjust ? "Adjust is not connected to this project." : "GA4 is not connected to this project.", range = f.Range, today = Db.Iso(today), lastUpdated = updated, freshness,
             cohortCount = heat.Count, users = heat.Sum(h => h.Users),
             maturity = new
             {
@@ -67,7 +78,7 @@ public sealed partial class AnalyticsEngine
                 .OrderByDescending(x => x.users).ToArray(),
             churnTrend = RetentionAnalytics.ChurnTrend(heat),
             newVsReturning = ga,
-            definitions = new
+            definitions = useAdjust ? AdjustRetentionDefinitions : new
             {
                 exact = "Exact-day (Day N) retention = users of a first-session cohort who were active on exactly day N ÷ cohort size (GA4 cohortActiveUsers / cohortTotalUsers).",
                 rolling = "Rolling retention (active on day N or later) is not available from the GA4 Data API.",
@@ -76,6 +87,16 @@ public sealed partial class AnalyticsEngine
             },
         };
     }
+
+    public const string AdjustPrefix = "adjust_";
+
+    private static readonly object AdjustRetentionDefinitions = new
+    {
+        exact = "Day N retention (Adjust) = users of an install cohort active again on day N (retained_users_dN, 24-hour periods after install) ÷ that cohort's installs.",
+        rolling = "Rolling retention (active on day N or later) is not shown.",
+        maturity = "Only days a cohort has fully reached are stored, so immature cells are blank, never 0%. Adjust dates are UTC days; the last few days can still change as late events arrive.",
+        segments = "Segments use Adjust's install attribution (first attribution): network, campaign (with the network's campaign id), country and platform. Unlike GA4, this covers Meta campaigns too.",
+    };
 
     // ---------------------------------------------------------------- campaigns
 
@@ -108,7 +129,7 @@ public sealed partial class AnalyticsEngine
         low_ctr = "CTR ≤ 0.5× the platform median with ≥ 2,000 impressions.",
         rising_cpm = "CPM up ≥ 25% vs the previous period (≥ 2,000 impressions in both).",
         declining_cvr = "Click-to-install rate down ≥ 25% vs the previous period (≥ 100 clicks in both).",
-        poor_quality = "D1 retention of users from this campaign (GA4) ≤ 0.7× the project's D1 (≥ 30 cohort users).",
+        poor_quality = "D1 retention of users from this campaign (Adjust when connected, matched by campaign id; else GA4 by campaign name) ≤ 0.7× the project's D1 from the same source (≥ 30 cohort users).",
         good_retention = "D1 retention ≥ 1.2× the project's D1 (≥ 30 cohort users).",
         investigate_before_scaling = "Looks efficient on CPI but retention is unknown or below average, or there are fewer than 20 installs.",
         scale_candidate = "CPI ≤ 0.8× median with ≥ 20 installs and retention at or above the project average.",
@@ -121,10 +142,17 @@ public sealed partial class AnalyticsEngine
         var prevByKey = rows.Prev.GroupBy(Key).ToDictionary(g => g.Key, g => Perf.Of(g));
         var total = rows.Now.Sum(r => r.Spend ?? 0);
 
-        // Retention per campaign from GA4 first-user campaign cohorts (matched by campaign name).
-        var cohorts = level == "campaign" ? data.Cohorts(p.Id, "campaign", f.Start, f.End) : [];
+        // Retention per campaign. Adjust cohorts carry the network's campaign id, so they match Meta and Google Ads
+        // campaigns exactly; without Adjust, GA4 first-user campaign cohorts are matched by name (Google Ads only).
+        // Campaign and project D1 always come from the same source so the comparison is like for like.
+        var adjustCohorts = level == "campaign" ? data.AdjustCohorts(p.Id, "campaign", f.Start, f.End) : [];
+        var useAdjust = adjustCohorts.Count > 0;
+        var adjustById = useAdjust
+            ? adjustCohorts.Select(c => (Id: AdjustService.IdOf(c.SegmentValue), Cell: c)).Where(x => x.Id is not null).ToLookup(x => x.Id!, x => x.Cell)
+            : null;
+        var cohorts = level == "campaign" && !useAdjust ? data.Cohorts(p.Id, "campaign", f.Start, f.End) : [];
         var adGroupCohorts = level == "adset" ? data.Cohorts(p.Id, "ad_group", f.Start, f.End) : [];
-        var overall = RetentionAnalytics.Curve(data.Cohorts(p.Id, "all", f.Start, f.End), today);
+        var overall = RetentionAnalytics.Curve(useAdjust ? data.AdjustCohorts(p.Id, "all", f.Start, f.End) : data.Cohorts(p.Id, "all", f.Start, f.End), today);
         var overallD1 = overall[1].Percent;
 
         var list = rows.Now.GroupBy(Key).Select(g =>
@@ -132,7 +160,8 @@ public sealed partial class AnalyticsEngine
             var first = g.OrderByDescending(x => x.Date).First();
             var now = Perf.Of(g);
             var prev = prevByKey.GetValueOrDefault(g.Key) ?? new Perf();
-            var segCells = level == "campaign" ? cohorts.Where(c => c.SegmentValue == first.CampaignName).ToArray()
+            var segCells = level == "campaign" && adjustById is not null ? adjustById[first.CampaignId].ToArray()
+                : level == "campaign" ? cohorts.Where(c => c.SegmentValue == first.CampaignName).ToArray()
                 : level == "adset" ? adGroupCohorts.Where(c => c.SegmentValue == first.AdsetName).ToArray() : [];
             var curve = segCells.Length == 0 ? null : RetentionAnalytics.Curve(segCells, today);
             var daily = g.GroupBy(x => x.Date).ToDictionary(x => x.Key, x => Perf.Of(x));
@@ -269,6 +298,7 @@ public sealed partial class AnalyticsEngine
         var tutorialEvent = p.TutorialEvent ?? (events.ContainsKey("tutorial_complete") ? "tutorial_complete" : null);
         var tutorialBegin = events.ContainsKey("tutorial_begin") ? "tutorial_begin" : null;
         var purchaseEvent = p.PurchaseEvent ?? "in_app_purchase";
+        var nux = p.NuxEvents ?? [];
         var cells = data.Cohorts(projectId, "all", f.Start, f.End);
         var heat = RetentionAnalytics.Heatmap(cells, today);
         var d1Base = heat.Where(h => h.Cells[1].Status != CellStatus.Immature).Sum(h => h.Users);
@@ -287,10 +317,21 @@ public sealed partial class AnalyticsEngine
                 ads.Installs is null ? "No install conversion tracking on the ad accounts." : "Platform-attributed installs (paid only)."),
             new("first_open", "First open", hasGa ? Ev("first_open") : null, "GA4 first_open", "onboarding",
                 "Counted by GA4 inside the game, for paid and organic players together. Ad platforms count installs their own way (store conversions, modelled, up to 30 days after a click), so the two numbers never match exactly: fewer first opens means some installs never opened the game or GA4 has not received them yet."),
-            new("tutorial_begin", "Tutorial started", hasGa && tutorialBegin is not null ? Ev(tutorialBegin) : null, "GA4 " + (tutorialBegin ?? "tutorial_begin"), "onboarding",
-                tutorialBegin is null ? "No tutorial_begin event found." : null),
-            new("tutorial_complete", "Tutorial completed", hasGa && tutorialEvent is not null ? Ev(tutorialEvent) : null, "GA4 " + (tutorialEvent ?? "(not configured)"), "onboarding",
-                tutorialEvent is null ? "Set the tutorial completion event in Project settings." : null),
+        };
+        // The project's first-time player journey replaces the two standard tutorial steps when it is configured.
+        if (nux.Count > 0)
+            steps.AddRange(nux.Select(s => new FunnelStep(NuxKey(s.Event), s.Label ?? s.Event, hasGa ? Ev(s.Event) : null, "GA4 " + s.Event, "onboarding",
+                hasGa && !events.ContainsKey(s.Event) ? $"No '{s.Event}' events in this period. Check the spelling in Project settings, or the game does not send it yet." : null)));
+        else
+            steps.AddRange(
+            [
+                new("tutorial_begin", "Tutorial started", hasGa && tutorialBegin is not null ? Ev(tutorialBegin) : null, "GA4 " + (tutorialBegin ?? "tutorial_begin"), "onboarding",
+                    tutorialBegin is null ? "No tutorial_begin event found. Add your first-time player events in Project settings." : null),
+                new("tutorial_complete", "Tutorial completed", hasGa && tutorialEvent is not null ? Ev(tutorialEvent) : null, "GA4 " + (tutorialEvent ?? "(not configured)"), "onboarding",
+                    tutorialEvent is null ? "Set the tutorial completion event, or your first-time player events, in Project settings." : null),
+            ]);
+        steps.AddRange(
+        [
             new("returning_d1", "Returned on day 1", hasGa && d1Base > 0 ? d1Active : null, "GA4 cohorts", "retention",
                 $"Of {d1Base:N0} users whose cohort reached day 1."),
             new("purchasers", "Purchasers", hasGa && events.ContainsKey(purchaseEvent) ? Ev(purchaseEvent) : hasGa && ga.Sum(x => x.Purchasers ?? 0) > 0 ? ga.Sum(x => x.Purchasers ?? 0) : null,
@@ -298,11 +339,12 @@ public sealed partial class AnalyticsEngine
                 hasGa && !events.ContainsKey(purchaseEvent) && ga.Sum(x => x.Purchasers ?? 0) == 0 ? $"No {purchaseEvent} events: the game has no in-app purchases, or they are not tracked." : null),
             new("ad_viewers", "Ad viewers", hasGa && events.ContainsKey("ad_impression") ? Ev("ad_impression") : null, "GA4 ad_impression", "monetization",
                 events.ContainsKey("ad_impression") ? null : "No ad_impression events: ad revenue is not tracked in GA4 (link AdMob or log ad_impression)."),
-        };
+        ]);
+        var firstOpens = steps.First(s => s.Key == "first_open").Value;
 
         // Conversion between consecutive available steps; the weakest relative to its target (or previous period) is the bottleneck.
         var prevF = f.Previous();
-        var prevSteps = FunnelValues(projectId, prevF, today, tutorialEvent, tutorialBegin, purchaseEvent);
+        var prevSteps = FunnelValues(projectId, prevF, today, tutorialEvent, tutorialBegin, purchaseEvent, nux);
         var output = new List<object>();
         FunnelStep? last = null;
         var drops = new List<(FunnelStep From, FunnelStep To, decimal Rate, decimal? PrevRate)>();
@@ -316,7 +358,8 @@ public sealed partial class AnalyticsEngine
                     prevRate = Math.Round(pv.Value * 100m / pl.Value, 2);
                 drops.Add((last, s, rate.Value, prevRate));
             }
-            output.Add(new { key = s.Key, label = s.Label, value = s.Value, source = s.Source, stage = s.Stage, note = s.Note, conversionFromPrevious = rate, previousConversion = prevRate, fromStep = s.Value is not null ? last?.Label : null });
+            var ofFirstOpen = s.Stage == "onboarding" && s.Key != "first_open" && s.Value is not null && firstOpens is > 0 ? Math.Round(s.Value.Value * 100m / firstOpens.Value, 1) : (decimal?)null;
+            output.Add(new { key = s.Key, label = s.Label, value = s.Value, source = s.Source, stage = s.Stage, note = s.Note, conversionFromPrevious = rate, previousConversion = prevRate, fromStep = s.Value is not null ? last?.Label : null, shareOfFirstOpen = ofFirstOpen, nux = s.Key.StartsWith("nux:", StringComparison.Ordinal) });
             if (s.Value is not null) last = s;
         }
 
@@ -340,31 +383,36 @@ public sealed partial class AnalyticsEngine
         var worst = drops.Where(d => d.From.Stage != "ad" && d.To.Key is not "first_open" && d.To.Stage != "monetization").OrderBy(d => d.Rate).FirstOrDefault();
         return new
         {
-            range = f.Range, steps = output, diagnosis,
+            range = f.Range, steps = output, diagnosis, nuxConfigured = nux.Count > 0,
             biggestDrop = worst.To is null ? null : new { from = worst.From.Label, to = worst.To.Label, rate = worst.Rate, stage = worst.To.Stage, meaning = StageMeaning(worst.To.Stage) },
             revenue = hasGa ? new { total = revenue, ad = adRevenue, purchase = ga.Sum(x => x.PurchaseRevenue ?? 0), currency = ga.Select(x => x.Currency).FirstOrDefault(c => c is not null) } : null,
             notes = new[]
             {
                 "Ad steps are paid traffic only; GA4 steps include organic users. Ratios across that boundary compare different populations.",
-                "GA4 users per step are summed per day; events that fire once per user (first_open, tutorial) are close to unique users, repeated events overstate them.",
+                "GA4 users per step are summed per day; events that fire once per user (first_open, tutorial, NUX steps) are close to unique users, repeated events overstate them.",
+                "First-time player steps include every player who sent the event in the period, so returning players who replay a step are counted too.",
                 "Diagnosis compares each step with its own previous period and your targets. No universal benchmark is assumed.",
             },
         };
     }
 
-    private Dictionary<string, long?> FunnelValues(string projectId, Filters f, DateOnly today, string? tutorialEvent, string? tutorialBegin, string purchaseEvent)
+    private static string NuxKey(string eventName) => "nux:" + eventName;
+
+    private Dictionary<string, long?> FunnelValues(string projectId, Filters f, DateOnly today, string? tutorialEvent, string? tutorialBegin, string purchaseEvent, IReadOnlyList<NuxStep> nux)
     {
         var ads = Perf.Of(data.Ads(projectId, f));
         var events = data.Ga4Events(projectId, f.Start, f.End).GroupBy(e => e.EventName).ToDictionary(g => g.Key, g => g.Sum(x => x.Users ?? 0));
         var heat = RetentionAnalytics.Heatmap(data.Cohorts(projectId, "all", f.Start, f.End), today);
         long? E(string? n) => n is not null && events.TryGetValue(n, out var v) ? v : null;
-        return new Dictionary<string, long?>
+        var values = new Dictionary<string, long?>
         {
             ["impressions"] = ads.Impressions, ["clicks"] = ads.Clicks, ["installs"] = ads.Installs is null ? null : (long)ads.Installs,
             ["first_open"] = E("first_open"), ["tutorial_begin"] = E(tutorialBegin), ["tutorial_complete"] = E(tutorialEvent),
             ["returning_d1"] = heat.Where(h => h.Cells[1].Status != CellStatus.Immature).Sum(h => h.Cells[1].ActiveUsers ?? 0),
             ["purchasers"] = E(purchaseEvent), ["ad_viewers"] = E("ad_impression"),
         };
+        foreach (var s in nux) values[NuxKey(s.Event)] = E(s.Event);
+        return values;
     }
 
     private static string StageMeaning(string stage) => stage switch
@@ -388,6 +436,8 @@ public sealed partial class AnalyticsEngine
         var ads = data.Ads(projectId, f with { Platform = null, Campaign = null });
         var events = data.Ga4Events(projectId, f.Start, f.End).Where(e => e.EventName == "first_open").ToDictionary(e => e.Date, e => e.Users);
         var sm = data.Ga4Dims(projectId, f.Start, f.End, "source_medium");
+        var adj = data.AdjustInstalls(projectId, f.Start, f.End).ToDictionary(x => x.Date);
+        var hasAdjust = adj.Count > 0;
         static string Bucket(string sourceMedium)
         {
             var s = sourceMedium.ToLowerInvariant();
@@ -409,13 +459,17 @@ public sealed partial class AnalyticsEngine
                 ga4FirstOpen = events.TryGetValue(d, out var fo) ? fo : null,
                 ga4NewUsersGoogleAds = dims.GetValueOrDefault("google_ads"), ga4NewUsersMeta = dims.GetValueOrDefault("meta"),
                 ga4NewUsersOrganic = dims.GetValueOrDefault("organic"), ga4NewUsersUnattributed = dims.GetValueOrDefault("unattributed"), ga4NewUsersOther = dims.GetValueOrDefault("other"),
+                adjustInstalls = !hasAdjust ? (long?)null : adj.TryGetValue(d, out var aj) ? aj.Installs : 0,
+                adjustOrganic = !hasAdjust ? (long?)null : adj.TryGetValue(d, out var ao) ? ao.OrganicInstalls : 0,
+                adjustMeta = !hasAdjust ? (long?)null : adj.TryGetValue(d, out var am) ? am.MetaInstalls : 0,
+                adjustGoogle = !hasAdjust ? (long?)null : adj.TryGetValue(d, out var ag) ? ag.GoogleInstalls : 0,
             };
         }).ToArray();
         decimal? g = rows.All(r => r.googleAdsInstalls is null) ? null : rows.Sum(r => r.googleAdsInstalls ?? 0);
         decimal? m = rows.All(r => r.metaInstalls is null) ? null : rows.Sum(r => r.metaInstalls ?? 0);
         var gaG = rows.Sum(r => r.ga4NewUsersGoogleAds);
         var gaM = rows.Sum(r => r.ga4NewUsersMeta);
-        var conns = p.Connections.Where(c => c.Integration is Integrations.GoogleAds or Integrations.Meta or Integrations.Ga4)
+        var conns = p.Connections.Where(c => c.Integration is Integrations.GoogleAds or Integrations.Meta or Integrations.Ga4 or Integrations.Adjust)
             .Select(c => new { integration = c.Integration, id = c.ExternalId, timeZone = c.TimeZone, currency = c.Currency }).ToArray();
         return new
         {
@@ -427,6 +481,10 @@ public sealed partial class AnalyticsEngine
                 googleMatchRate = g is > 0 ? Math.Round(gaG * 100m / g.Value, 1) : (decimal?)null,
                 metaMatchRate = m is > 0 ? Math.Round(gaM * 100m / m.Value, 1) : (decimal?)null,
                 platformSum = g is null && m is null ? (decimal?)null : (g ?? 0) + (m ?? 0),
+                adjustInstalls = hasAdjust ? rows.Sum(r => r.adjustInstalls ?? 0) : (long?)null,
+                adjustOrganic = hasAdjust ? rows.Sum(r => r.adjustOrganic ?? 0) : (long?)null,
+                adjustMeta = hasAdjust ? rows.Sum(r => r.adjustMeta ?? 0) : (long?)null,
+                adjustGoogle = hasAdjust ? rows.Sum(r => r.adjustGoogle ?? 0) : (long?)null,
             },
             connections = conns,
             definitions = new object[]
@@ -434,6 +492,7 @@ public sealed partial class AnalyticsEngine
                 new { source = "Google Ads installs", definition = "Conversions from enabled DOWNLOAD-category conversion actions (e.g. Google Play first open via Firebase/Play). Credited to the date of the ad click/interaction, and can still increase for the length of the conversion window (default 30 days).", timezone = "Google Ads account time zone" },
                 new { source = "Meta installs", definition = "mobile_app_install actions attributed by Meta (default 7-day click / 1-day view), reported on the impression date. Requires the Meta SDK or an MMP.", timezone = "Meta ad account time zone" },
                 new { source = "GA4 first_open", definition = "Every first app open on a device, from every source (paid + organic). Counted on the day it happens.", timezone = "GA4 property time zone" },
+                new { source = "Adjust installs", definition = "Installs attributed by Adjust (first attribution), deduplicated across every network, so one install is credited to one source only. Meta / Google columns are Adjust's network buckets, which usually differ from what each ad platform claims for itself.", timezone = "UTC" },
                 new { source = "GA4 new users by source", definition = "GA4's own last-click attribution of first-time users (first-user source / medium). Users without a known source appear as (direct)/(not set).", timezone = "GA4 property time zone" },
             },
             guidance = new[]

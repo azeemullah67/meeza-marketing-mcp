@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Meeza.Marketing.Adjust;
 using Meeza.Marketing.Analytics;
 using Meeza.Marketing.GoogleAds;
 using Meeza.Marketing.Meta;
@@ -35,17 +36,20 @@ public static class ServiceRegistration
         services.AddSingleton(sp => GoogleAdsOptions.FromSettings(sp.GetRequiredService<ISettingsResolver>()));
         services.AddSingleton(sp => PlayConsoleOptions.FromSettings(sp.GetRequiredService<ISettingsResolver>()));
         services.AddSingleton(sp => AnalyticsOptions.FromSettings(sp.GetRequiredService<ISettingsResolver>()));
+        services.AddSingleton(sp => AdjustOptions.FromSettings(sp.GetRequiredService<ISettingsResolver>()));
 
         // One HttpClient per platform keeps credentials and connection pools isolated between platforms.
         services.AddSingleton(sp => new MetaAdsClient(CreateHttpClient(sp), sp.GetRequiredService<MetaAdsOptions>(), sp.GetRequiredService<ILogger<MetaAdsClient>>()));
         services.AddSingleton(sp => new GoogleAdsClient(CreateHttpClient(sp), sp.GetRequiredService<GoogleAdsOptions>()));
         services.AddSingleton(sp => new PlayConsoleClient(CreateHttpClient(sp), sp.GetRequiredService<PlayConsoleOptions>()));
         services.AddSingleton(sp => new AnalyticsClient(CreateHttpClient(sp), sp.GetRequiredService<AnalyticsOptions>()));
+        services.AddSingleton(sp => new AdjustClient(CreateHttpClient(sp), sp.GetRequiredService<AdjustOptions>()));
 
         services.AddSingleton<MetaAdsPlatform>();
         services.AddSingleton<GoogleAdsPlatform>();
         services.AddSingleton<PlayConsoleService>();
         services.AddSingleton<AnalyticsService>();
+        services.AddSingleton<AdjustService>();
         services.AddSingleton<PlatformRegistry>();
         services.AddSingleton<Dashboard.DashboardData>();
         services.AddSingleton<Dashboard.DashboardServer>();
@@ -59,6 +63,7 @@ public static class ServiceRegistration
         services.AddSingleton<Sync.IIntegrationSyncer, Sync.GoogleAdsSyncer>();
         services.AddSingleton<Sync.IIntegrationSyncer, Sync.MetaSyncer>();
         services.AddSingleton<Sync.IIntegrationSyncer, Sync.Ga4Syncer>();
+        services.AddSingleton<Sync.IIntegrationSyncer, Sync.AdjustSyncer>();
         services.AddSingleton<Sync.SyncEngine>();
         services.AddSingleton<Sync.SyncScheduler>();
         services.AddSingleton<Intelligence.ProjectData>();

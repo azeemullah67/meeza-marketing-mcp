@@ -1,6 +1,6 @@
 # Meeza Marketing MCP
 
-A read-only [Model Context Protocol](https://modelcontextprotocol.io) server that connects **Meta Ads**, **Google Ads**, **Google Play Console** and **Google Analytics 4 / Firebase** to Claude. You can then ask questions about ad spend, acquisition costs, countries and app quality in plain language, without opening each dashboard.
+A read-only [Model Context Protocol](https://modelcontextprotocol.io) server that connects **Meta Ads**, **Google Ads**, **Google Play Console**, **Google Analytics 4 / Firebase** and **Adjust** to Claude. You can then ask questions about ad spend, acquisition costs, countries and app quality in plain language, without opening each dashboard.
 
 The server isn't tied to any game, company or ad account. Each user runs it on their own machine with their own credentials.
 
@@ -42,6 +42,7 @@ See [examples/prompts.md](examples/prompts.md) for more.
 | Google Ads | `google_ads_get_accounts`, `google_ads_get_campaigns`, `google_ads_get_performance`, `google_ads_get_conversion_metrics`, `google_ads_get_country_performance`, `google_ads_get_cost_per_install`, `google_ads_get_asset_performance` (each headline, image and video with Google's Low / Good / Best rating) |
 | Growth | `get_game_scorecard` (retention graded vs industry, verdict, next steps, estimated LTV vs CPI), `check_analytics_tracking` (GA4 users vs ad installs, diagnosis) |
 | Google Analytics 4 / Firebase | `ga4_get_properties`, `ga4_get_active_users`, `ga4_get_retention`, `ga4_get_revenue` ([setup](docs/analytics-setup.md)) |
+| Adjust (MMP) | `adjust_list_apps`, `adjust_get_performance` (installs, cost, CPI, revenue by network / campaign / ad group / creative / country), `adjust_get_retention` (install-cohort retention per network, campaign or creative) ([setup](docs/adjust-setup.md)) |
 | Google Play | `play_get_app_details`, `play_get_reviews`, `play_get_ratings`, `play_get_android_vitals`, `play_get_crash_metrics`, `play_get_anr_metrics`, `play_get_store_installs` |
 
 Every tool returns the same envelope: `{ tool, ok, dateRange, data, errors[], notes[] }`. If one platform fails, the others still return data.
@@ -50,7 +51,8 @@ Every tool returns the same envelope: `{ tool, ok, dateRange, data, errors[], no
 
 - **Currencies are never converted or mixed.** Totals are always grouped by currency.
 - **`null` means unavailable, not zero.** CPI is only computed when installs are greater than 0.
-- **Install sources are kept separate.** Meta- and Google-attributed installs can overlap. Play Console installs are store-reported (organic + paid). They are shown side by side and never summed.
+- **Install sources are kept separate.** Meta- and Google-attributed installs can overlap. Play Console installs are store-reported (organic + paid). Adjust installs are deduplicated by Adjust. They are shown side by side and never summed.
+- **Adjust cost is never added to ad-platform spend.** It is the same money seen through Adjust, and is the only amount converted (by Adjust, into `ADJUST_CURRENCY`).
 - **Time zones.** Each platform reports in its own account time zone. Play vitals use America/Los_Angeles.
 
 ## Quick start
@@ -122,6 +124,9 @@ Settings are resolved in this order:
 | `PLAY_SERVICE_ACCOUNT_JSON` | yes | Alternative: the key stored in the secret store |
 | `PLAY_PACKAGE_NAMES` | | Allow-list, e.g. `com.example.game` |
 | `PLAY_REPORTS_BUCKET` | | `pubsite_prod_rev_…` bucket for store installs and ratings exports |
+| `ADJUST_API_TOKEN` | yes | Adjust API token (Account settings → My profile) |
+| `ADJUST_APP_TOKENS` | | Optional allow-list of Adjust app tokens |
+| `ADJUST_CURRENCY` | | Currency Adjust reports cost and revenue in (default `USD`) |
 | `MEEZA_DASHBOARD` | | `off` stops the dashboard from starting with the MCP server |
 | `MEEZA_DASHBOARD_PORT` | | Dashboard port (default `5057`) |
 

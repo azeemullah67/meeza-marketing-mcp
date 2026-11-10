@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Meeza.Marketing.Adjust;
 using Meeza.Marketing.Analytics;
 using Meeza.Marketing.GoogleAds;
 using Meeza.Marketing.Meta;
@@ -21,6 +22,7 @@ public sealed class ConnectionSettings(
     GoogleAdsClient googleClient, GoogleAdsPlatform google,
     PlayConsoleClient playClient, PlayConsoleService play,
     AnalyticsClient analyticsClient, AnalyticsService analytics,
+    AdjustClient adjustClient, AdjustService adjust,
     DashboardData dashboard, Ai.ClaudeGateway claude)
 {
     public const int MaxValueLength = 20_000;
@@ -55,6 +57,12 @@ public sealed class ConnectionSettings(
         [
             new(SettingKeys.Ga4ServiceAccountJson, "Service account key (JSON)", true, false, "Optional. Leave empty to reuse the Google Play service account. Otherwise choose a .json key.", Multiline: true),
             new(SettingKeys.Ga4PropertyIds, "Property IDs", false, false, "Optional allow-list, e.g. 123456789 (GA4 → Admin → Property details). Leave empty to use every property the account can see."),
+        ],
+        [AdjustOptions.Platform] =
+        [
+            new(SettingKeys.AdjustApiToken, "API token", true, true, "In Adjust: settings (bottom left) → Account settings → My profile → API token. Read-only reporting access; resetting it in Adjust revokes it here."),
+            new(SettingKeys.AdjustAppTokens, "App tokens", false, false, "Optional allow-list, comma-separated, e.g. abc123def456. Leave empty to use every app the token can see."),
+            new(SettingKeys.AdjustCurrency, "Report currency", false, false, $"Optional. Adjust converts cost and revenue into this currency. Default {AdjustOptions.DefaultCurrency}."),
         ],
         [ClaudePlatform] =
         [
@@ -100,6 +108,7 @@ public sealed class ConnectionSettings(
         GoogleAdsOptions.Platform => googleClient.Options.IsConfigured,
         PlayConsoleOptions.Platform => playClient.Options.IsConfigured,
         AnalyticsOptions.Platform => analyticsClient.Options.IsConfigured,
+        AdjustOptions.Platform => adjustClient.Options.IsConfigured,
         ClaudePlatform => claude.IsConfigured,
         _ => false,
     };
@@ -137,7 +146,9 @@ public sealed class ConnectionSettings(
         googleClient.UpdateOptions(GoogleAdsOptions.FromSettings(settings));
         playClient.UpdateOptions(PlayConsoleOptions.FromSettings(settings));
         analyticsClient.UpdateOptions(AnalyticsOptions.FromSettings(settings));
+        adjustClient.UpdateOptions(AdjustOptions.FromSettings(settings));
         analytics.ResetCache();
+        adjust.ResetCache();
         meta.ResetCache();
         google.ResetCache();
         play.ResetCache();
@@ -165,6 +176,12 @@ public sealed class ConnectionSettings(
                     if (props.Count == 0)
                         return new { ok = false, message = $"Signed in as {analytics.SafeEmail()}, but no GA4 property is shared with it. Add that email as a Viewer in GA4 → Admin → Property access management.", items = Array.Empty<string>() };
                     return new { ok = true, message = $"Connected as {analytics.SafeEmail()}. {props.Count} propert{(props.Count == 1 ? "y" : "ies")} found.", items = props.Select(x => $"{x.DisplayName ?? "(unknown)"} ({x.PropertyId})").Take(10) };
+                case AdjustOptions.Platform:
+                    adjust.ResetCache();
+                    var adjustApps = await adjust.GetAppsAsync(ct).ConfigureAwait(false);
+                    if (adjustApps.Count == 0)
+                        return new { ok = false, message = "The token works, but no Adjust app is visible to it. Check this Adjust user's app permissions.", items = Array.Empty<string>() };
+                    return new { ok = true, message = $"Connected. {adjustApps.Count} app{(adjustApps.Count == 1 ? "" : "s")} found. Amounts are reported in {adjust.Currency}.", items = adjustApps.Select(a => $"{a.Name ?? "(unnamed)"} ({a.AppToken})").Take(10) };
                 case ClaudePlatform:
                     using (var client = claude.Client())
                     {
@@ -251,12 +268,17 @@ public sealed class ConnectionSettings(
                     throw new ArgumentException("The service account key isn't valid JSON. Paste the whole downloaded .json file.");
                 }
                 return value;
+            case SettingKeys.AdjustAppTokens:
+                return string.Join(",", SettingsResolver.SplitList(value).Select(AdjustOptions.NormalizeAppToken));
+            case SettingKeys.AdjustCurrency:
+                return AdjustOptions.NormalizeCurrency(value);
             case SettingKeys.AnthropicApiKey:
                 if (!value.StartsWith("sk-ant-", StringComparison.Ordinal)) throw new ArgumentException("Anthropic API keys start with sk-ant-.");
                 if (value.Any(char.IsWhiteSpace)) throw new ArgumentException("Keys can't contain spaces.");
                 return value;
             case SettingKeys.MetaAccessToken:
             case SettingKeys.GoogleAdsDeveloperToken:
+            case SettingKeys.AdjustApiToken:
                 if (value.Any(char.IsWhiteSpace)) throw new ArgumentException("Tokens can't contain spaces. Check that you copied the whole token.");
                 return value;
             default:

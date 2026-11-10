@@ -30,7 +30,7 @@ public static class CliCommands
           meeza-marketing-mcp secrets remove NAME   Delete a stored secret
           meeza-marketing-mcp auth google-ads       Sign in with Google and store a Google Ads refresh token
           meeza-marketing-mcp projects              List game projects and their connected accounts
-          meeza-marketing-mcp sync [PROJECT_ID] [--integration google_ads|meta|ga4]
+          meeza-marketing-mcp sync [PROJECT_ID] [--integration google_ads|meta|ga4|adjust]
                                                    Synchronize now (all projects when no id is given) and print the result
           meeza-marketing-mcp help                  Show this help
 
@@ -328,6 +328,22 @@ public static class CliCommands
                 Console.WriteLine($"OK - service account {ga4.SafeEmail()}{(ga4.UsesPlayKey ? " (Play key)" : "")}, {props.Count} propert{(props.Count == 1 ? "y" : "ies")}");
                 foreach (var p in props) Console.WriteLine($"             {p.PropertyId}  {p.DisplayName}  [{p.AccountName}]");
                 if (props.Count == 0) Console.WriteLine("             Add the service account as a Viewer in GA4 → Admin → Property access management.");
+            }
+            catch (Exception ex)
+            {
+                failures++;
+                Console.WriteLine("FAILED - " + ToolRunner.Describe(ex));
+            }
+
+        var adjust = sp.GetRequiredService<Meeza.Marketing.Adjust.AdjustService>();
+        Console.Write($"{Meeza.Marketing.Adjust.AdjustOptions.Platform,-12} ");
+        if (!adjust.IsConfigured) Console.WriteLine("not configured - " + Meeza.Marketing.Adjust.AdjustOptions.Hint);
+        else
+            try
+            {
+                var apps = await adjust.GetAppsAsync(cts.Token);
+                Console.WriteLine($"OK - {apps.Count} app{(apps.Count == 1 ? "" : "s")}, amounts in {adjust.Currency}");
+                foreach (var a in apps) Console.WriteLine($"             {a.AppToken}  {a.Name}");
             }
             catch (Exception ex)
             {

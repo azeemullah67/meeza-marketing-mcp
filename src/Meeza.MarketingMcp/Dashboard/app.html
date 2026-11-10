@@ -315,6 +315,18 @@ details.notes ul { margin: 8px 0 0; padding: 12px 16px 12px 32px; background: va
 .form label .sub { font-weight: 400; font-size: 12px; color: var(--muted); }
 .form label.wide, .form .wide { grid-column: 1 / -1; }
 .conn { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: var(--surface-2); }
+/* first-time player (NUX) journey editor */
+.nux-row { display: grid; grid-template-columns: 28px minmax(0,1fr) minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 6px 0; }
+.nux-row .disc { justify-self: center; }
+.nux-row input.bad { border-color: var(--err-border); }
+.nux-row .acts { display: flex; gap: 4px; }
+.nux-row .acts button { width: 32px; height: 32px; padding: 0; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-2); cursor: pointer; }
+.nux-row .acts button:hover:not(:disabled) { background: var(--wash); color: var(--wash-ink); }
+.nux-row .acts button:disabled { opacity: .4; cursor: not-allowed; }
+.nux-empty { padding: 10px 12px; border: 1px dashed var(--border-strong); border-radius: 10px; }
+.nux-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.chips button .n { opacity: .65; margin-left: 4px; }
+@media (max-width: 640px) { .nux-row { grid-template-columns: 28px minmax(0,1fr) auto; } .nux-row .nux-lb { grid-column: 2 / 4; } }
 .conn label.opt { display: flex; gap: 8px; align-items: center; padding: 6px 0; font-size: 13px; color: var(--text); flex-direction: row; }
 details.adv { border: 1px dashed var(--border-strong); border-radius: 10px; padding: 0 14px; background: var(--surface-2); }
 details.adv > summary { cursor: pointer; display: flex; gap: 10px; align-items: center; min-height: 44px; font: 600 13.5px/20px var(--font); color: var(--text); list-style: none; }
@@ -355,6 +367,10 @@ form.cred.focus { outline: 2px solid var(--s1); outline-offset: 2px; transition:
 .verdict::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--kpi-top); }
 .verdict .say { font: 600 16px/24px var(--font); margin: 12px 0 8px; text-wrap: pretty; }
 .verdict .sum { font-size: 12.5px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.verdict .sum a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.verdict .sum a:hover { text-decoration-thickness: 2px; }
+#attn-card:focus { outline: none; }
+#attn-card, #attn-ok { scroll-margin-top: 80px; }
 .verdict .top3 { border-left: 1px solid var(--border); padding-left: 24px; }
 .verdict .top3 h3 { font: 600 11px/14px var(--font); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
 .verdict .top3 a { display: flex; gap: 10px; align-items: center; padding: 6px 0; color: var(--text); text-decoration: none; font-weight: 500; }
@@ -529,7 +545,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
   const ago = (iso) => { if (!iso) return "never"; const s = (Date.now() - new Date(iso)) / 1000; return s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 172800 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} days ago`; };
   const dshort = (s) => { const d = new Date(s + "T00:00:00"); return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
   const toast = (m, ms = 4000) => { const t = $("#toast"); t.textContent = m; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", ms); };
-  const label = (i) => ({ google_ads: "Google Ads", meta: "Meta Ads", ga4: "GA4", google_play: "Google Play" }[i] || i);
+  const label = (i) => ({ google_ads: "Google Ads", meta: "Meta Ads", ga4: "GA4", adjust: "Adjust", google_play: "Google Play" }[i] || i);
 
   async function api(path, opts = {}) {
     const res = await fetch(path, { credentials: "same-origin", ...opts });
@@ -616,6 +632,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     const b = e.target.closest(".infob"); if (b) { e.preventDefault(); e.stopPropagation(); ipop.style.display === "block" ? hideInfo() : showInfo(b); return; }
     const t = e.target.closest(".settgt"); if (t) { e.stopPropagation(); S.tgtMetric = t.dataset.metric; location.hash = "#/targets"; return; }
     const mv = e.target.closest("[data-mv]"); if (mv) { e.preventDefault(); const d = document.getElementById("mv-" + mv.dataset.mv); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth", block: "center" }); d.querySelector("summary")?.focus({ preventScroll: true }); } return; }
+    const jp = e.target.closest("[data-jump]"); if (jp) { e.preventDefault(); const d = document.getElementById(jp.dataset.jump); if (d) { if (d.tagName === "DETAILS") { d.open = true; d.querySelector("summary")?.focus({ preventScroll: true }); } else d.focus({ preventScroll: true }); d.scrollIntoView({ behavior: "smooth", block: "start" }); } return; }
     const card = e.target.closest("[data-href]"); if (card && !e.target.closest("a,button,summary,input,select")) location.hash = card.dataset.href;
     if (!e.target.closest(".infob")) hideInfo();
   });
@@ -700,7 +717,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     return `<section class="card verdict" aria-labelledby="vh">
       <div><h2 id="vh" class="sr">Where the game stands</h2><span class="badge ${esc(st.stage)}">${esc(st.stageLabel)}</span>
         <p class="say">${esc(st.verdict)}</p>
-        <div class="sum"><span><b>${attn}</b> ${attn === 1 ? "thing needs" : "things need"} attention</span><span><b>${ok}</b> ${ok === 1 ? "check" : "checks"} OK</span><span>Based on ${esc(rng(st.range))}</span></div></div>
+        <div class="sum"><a href="#/overview" data-jump="attn-card"><b>${attn}</b> ${attn === 1 ? "thing needs" : "things need"} attention</a><a href="#/overview" data-jump="attn-ok"><b>${ok}</b> ${ok === 1 ? "check" : "checks"} OK</a><span>Based on ${esc(rng(st.range))}</span></div></div>
       <div class="top3"><h3>Top actions</h3>${st.moves.slice(0, 3).map(m => `<a href="#/overview" data-mv="${m.priority}"><span class="disc">${m.priority}</span><span>${esc(m.title)}</span></a>`).join("")}</div>
     </section>`;
   }
@@ -726,9 +743,9 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
       .concat(st.problems.map(f => `<div class="attn"><span class="sev ${esc(f.severity)}">${esc(f.severity)}</span><div><b>${esc(f.problem)}</b><div class="n">${esc(f.action)}</div><details><summary>Details ▸</summary>${findingBody(f)}</details></div></div>`));
     const others = st.health.filter(h => h.status !== "bad" && h.status !== "watch");
     const okCount = others.filter(h => h.status === "good").length;
-    return `<section class="card"><div class="hd"><h2>Needs attention</h2><a href="#/analyst" class="sub">All findings →</a></div>
+    return `<section class="card" id="attn-card" tabindex="-1"><div class="hd"><h2>Needs attention</h2><a href="#/analyst" class="sub">All findings →</a></div>
       ${rows.length ? rows.slice(0, 5).join("") + (rows.length > 5 ? `<details><summary class="btn ghost" style="margin-top:8px">Show all (${rows.length})</summary>${rows.slice(5).join("")}</details>` : "") : `<div class="empty bare"><b>Nothing urgent</b>No health check or rule flagged anything for ${esc(rng(st.range))}.</div>`}
-      <details class="okline" style="display:block"><summary>${okCount} ${okCount === 1 ? "check" : "checks"} OK${others.length > okCount ? ` · ${others.length - okCount} more` : ""} ▸</summary>
+      <details class="okline" id="attn-ok" style="display:block"><summary>${okCount} ${okCount === 1 ? "check" : "checks"} OK${others.length > okCount ? ` · ${others.length - okCount} more` : ""} ▸</summary>
         <div class="hc">${others.map(h => `<div><div class="l"><span>${esc(h.label)}</span><span class="st ${esc(h.status)}">${esc(stLabel[h.status] || h.status)}</span></div><div class="v">${esc(h.value)}</div>${h.reference ? `<div class="r">vs ${esc(h.reference)}${h.referenceSource ? ` · ${cite(h.referenceSource)}` : ""}</div>` : ""}<div class="n">${esc(h.note)}</div></div>`).join("")}</div></details>
     </section>`;
   }
@@ -845,7 +862,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
 
   // ------------------------------------------------------------------ freshness banner
   function freshnessBanner(status) {
-    if (!status?.length) return `<div class="banner">${ic("info")}<div>No data sources are connected to this project yet. <a href="#/settings">Connect Google Ads, Meta Ads or GA4</a>.</div></div>`;
+    if (!status?.length) return `<div class="banner">${ic("info")}<div>No data sources are connected to this project yet. <a href="#/settings">Connect Google Ads, Meta Ads, GA4 or Adjust</a>.</div></div>`;
     const bad = status.filter(s => s.freshness !== "fresh" && s.freshness !== "syncing");
     if (!bad.length) return "";
     const err = bad.some(s => ["stale", "error", "never"].includes(s.freshness));
@@ -937,11 +954,12 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
       ${c.countries.untestedTargetCountries.length ? `<div class="banner" style="margin-top:12px">${ic("info")}<div>Target countries with no spend yet: <b>${c.countries.untestedTargetCountries.map(esc).join(", ")}</b></div></div>` : ""}</div>
       <div class="card" style="margin-top:12px"><div class="hd"><h2>Attribution reconciliation</h2><span class="sub">counted differently, so compare them, don't add them</span></div>
         <div class="kpis" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">
-          ${[["Google Ads installs", a.totals.googleAdsInstalls], ["Meta installs", a.totals.metaInstalls], ["GA4 first opens (all)", a.totals.ga4FirstOpen], ["GA4 new users: google/cpc", a.totals.ga4NewUsersGoogleAds], ["GA4 new users: Meta", a.totals.ga4NewUsersMeta], ["GA4 organic", a.totals.ga4NewUsersOrganic], ["GA4 unattributed", a.totals.ga4NewUsersUnattributed]].map(([n, v]) => `<div class="card" style="padding:12px 14px;box-shadow:none;background:var(--surface-2)"><div class="sub">${n}</div><b style="font-size:20px;line-height:28px" class="num">${v === null || v === undefined ? "n/a" : num(v)}</b></div>`).join("")}
+          ${[["Google Ads installs", a.totals.googleAdsInstalls], ["Meta installs", a.totals.metaInstalls], ["GA4 first opens (all)", a.totals.ga4FirstOpen], ["GA4 new users: google/cpc", a.totals.ga4NewUsersGoogleAds], ["GA4 new users: Meta", a.totals.ga4NewUsersMeta], ["GA4 organic", a.totals.ga4NewUsersOrganic], ["GA4 unattributed", a.totals.ga4NewUsersUnattributed],
+              ...(a.totals.adjustInstalls != null ? [["Adjust installs (all)", a.totals.adjustInstalls], ["Adjust: Meta", a.totals.adjustMeta], ["Adjust: Google", a.totals.adjustGoogle], ["Adjust: organic", a.totals.adjustOrganic]] : [])].map(([n, v]) => `<div class="card" style="padding:12px 14px;box-shadow:none;background:var(--surface-2)"><div class="sub">${n}</div><b style="font-size:20px;line-height:28px" class="num">${v === null || v === undefined ? "n/a" : num(v)}</b></div>`).join("")}
         </div>
         <div class="sub" style="margin:12px 0">GA4 linked ${a.totals.googleMatchRate === null ? "n/a" : pct(a.totals.googleMatchRate)} of Google Ads installs back to Google Ads${a.totals.metaMatchRate !== null ? `, and ${pct(a.totals.metaMatchRate)} of Meta installs back to Meta` : ""}.</div>
-        <div class="scroll" style="max-height:300px"><table class="t"><thead><tr><th>Date</th><th class="num">Google Ads</th><th class="num">Meta</th><th class="num">GA4 first_open</th><th class="num">GA4 google/cpc</th><th class="num">GA4 Meta</th><th class="num">GA4 organic</th><th class="num">GA4 unattributed</th></tr></thead><tbody>
-          ${a.rows.slice().reverse().map(r => `<tr><td>${esc(r.date)}${r.partial ? ' <span class="pill">partial</span>' : ""}</td><td class="num">${num(r.googleAdsInstalls)}</td><td class="num">${num(r.metaInstalls)}</td><td class="num">${num(r.ga4FirstOpen)}</td><td class="num">${num(r.ga4NewUsersGoogleAds)}</td><td class="num">${num(r.ga4NewUsersMeta)}</td><td class="num">${num(r.ga4NewUsersOrganic)}</td><td class="num">${num(r.ga4NewUsersUnattributed)}</td></tr>`).join("")}
+        <div class="scroll" style="max-height:300px"><table class="t"><thead><tr><th>Date</th><th class="num">Google Ads</th><th class="num">Meta</th><th class="num">GA4 first_open</th><th class="num">GA4 google/cpc</th><th class="num">GA4 Meta</th><th class="num">GA4 organic</th><th class="num">GA4 unattributed</th>${a.totals.adjustInstalls != null ? '<th class="num">Adjust all</th><th class="num">Adjust Meta</th><th class="num">Adjust Google</th><th class="num">Adjust organic</th>' : ""}</tr></thead><tbody>
+          ${a.rows.slice().reverse().map(r => `<tr><td>${esc(r.date)}${r.partial ? ' <span class="pill">partial</span>' : ""}</td><td class="num">${num(r.googleAdsInstalls)}</td><td class="num">${num(r.metaInstalls)}</td><td class="num">${num(r.ga4FirstOpen)}</td><td class="num">${num(r.ga4NewUsersGoogleAds)}</td><td class="num">${num(r.ga4NewUsersMeta)}</td><td class="num">${num(r.ga4NewUsersOrganic)}</td><td class="num">${num(r.ga4NewUsersUnattributed)}</td>${a.totals.adjustInstalls != null ? `<td class="num">${num(r.adjustInstalls)}</td><td class="num">${num(r.adjustMeta)}</td><td class="num">${num(r.adjustGoogle)}</td><td class="num">${num(r.adjustOrganic)}</td>` : ""}</tr>`).join("")}
         </tbody></table></div>
         <details style="margin-top:8px"><summary class="sub">Definitions, attribution windows and time zones</summary><ul>${a.definitions.map(x => `<li><b>${esc(x.source)}</b>: ${esc(x.definition)} <span class="muted">(${esc(x.timezone)})</span></li>`).join("")}</ul><ul>${a.guidance.map(g => `<li>${esc(g)}</li>`).join("")}</ul>${a.connections.length ? `<div class="sub">${a.connections.map(x => `${label(x.integration)} ${esc(x.id)}: ${esc(x.timeZone || "time zone unknown")}${x.currency ? ", " + esc(x.currency) : ""}`).join(" · ")}</div>` : ""}</details>
       </div>`;
@@ -954,8 +972,11 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     view.innerHTML = head("Retention & cohorts", "Loading…") + '<div class="skel"></div>';
     const d = await pv("retention", { segment: S.segment, value: S.segValue });
     const segs = ["all", "country", "platform", "channel", "campaign", "ad_group", "creative"];
-    const ctrl = `<div class="seg" id="segBtns">${segs.map(s => `<button data-s="${s}" class="${S.segment === s ? "on" : ""}">${s === "all" ? "All users" : s[0].toUpperCase() + s.slice(1).replace("_", " ")}</button>`).join("")}</div>
-      ${d.segmentValues?.length && S.segment !== "all" ? `<select id="segVal"><option value="">Compare top segments</option>${d.segmentValues.map(v => `<option value="${esc(v.value)}" ${v.value === S.segValue ? "selected" : ""}>${esc(v.value)} (${num(v.users)})</option>`).join("")}</select>` : ""}
+    const adjSegs = d.sources?.adjust ? ["adjust_all", "adjust_network", "adjust_campaign", "adjust_country", "adjust_platform"] : [];
+    const segName = (s) => { const a = s.startsWith("adjust_"), k = a ? s.slice(7) : s; return (k === "all" ? "All users" : k[0].toUpperCase() + k.slice(1).replace("_", " ")) + (a ? " (Adjust)" : ""); };
+    const ctrl = `<div class="seg" id="segBtns">${segs.map(s => `<button data-s="${s}" class="${S.segment === s ? "on" : ""}">${segName(s)}</button>`).join("")}</div>
+      ${adjSegs.length ? `<div class="seg" id="segBtnsAdj" title="Install cohorts attributed by Adjust: works for Meta campaigns too">${adjSegs.map(s => `<button data-s="${s}" class="${S.segment === s ? "on" : ""}">${segName(s)}</button>`).join("")}</div>` : ""}
+      ${d.segmentValues?.length && S.segment !== "all" && S.segment !== "adjust_all" ? `<select id="segVal"><option value="">Compare top segments</option>${d.segmentValues.map(v => `<option value="${esc(v.value)}" ${v.value === S.segValue ? "selected" : ""}>${esc(v.value)} (${num(v.users)})</option>`).join("")}</select>` : ""}
       <div class="seg"><button class="on" title="Share of players back on exactly day N">Exact day</button><button id="rollBtn" title="Back on day N or later">Rolling</button></div>`;
     if (d.available === false || d.mode === "rolling") {
       view.innerHTML = head("Retention & cohorts", "", ctrl) + `<div class="banner">${ic("info")}<div>${esc(d.reason || "GA4 is not connected to this project.")}</div></div>`;
@@ -989,7 +1010,7 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     wireRet();
   };
   function wireRet() {
-    $$("#segBtns button").forEach(b => b.onclick = () => { S.segment = b.dataset.s; S.segValue = ""; V.retention().catch(fail); });
+    $$("#segBtns button, #segBtnsAdj button").forEach(b => b.onclick = () => { S.segment = b.dataset.s; S.segValue = ""; V.retention().catch(fail); });
     const sv = $("#segVal"); if (sv) sv.onchange = () => { S.segValue = sv.value; V.retention().catch(fail); };
     const rb = $("#rollBtn"); if (rb) rb.onclick = async () => { const d = await pv("retention", { mode: "rolling" }); toast(d.reason, 9000); };
   }
@@ -1049,7 +1070,8 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
     const max = Math.max(1, ...d.steps.map(s => s.value || 0));
     view.innerHTML = head("Funnel", `<span class="rchip">${esc(rng(d.range))}</span><span>where players drop off, from ad impression to revenue</span>`)
       + (d.biggestDrop ? `<div class="banner warn">${ic("warn")}<div><b>Biggest drop:</b> only ${pct(d.biggestDrop.rate)} of players at “${esc(d.biggestDrop.from)}” reach “${esc(d.biggestDrop.to)}”. ${esc(d.biggestDrop.meaning)}</div></div>` : "")
-      + `<div class="card funnel">${d.steps.map(s => `<div class="step"><div><b>${esc(s.label)}</b><div class="sub">${esc(s.source)}</div>${s.note ? `<div class="sub muted" style="margin-top:2px">${esc(s.note)}</div>` : ""}</div>
+      + (d.nuxConfigured ? "" : `<div class="banner">${ic("info")}<div>Track your first-time player journey step by step: add your NUX events in <a href="#/settings">Project settings → First-time player journey</a>.</div></div>`)
+      + `<div class="card funnel">${d.steps.map(s => `<div class="step"><div><b>${esc(s.label)}</b>${s.nux ? ' <span class="pill">first-time journey</span>' : ""}<div class="sub">${esc(s.source)}${s.shareOfFirstOpen !== null && s.shareOfFirstOpen !== undefined ? ` · ${pct(s.shareOfFirstOpen, 1)} of first opens` : ""}</div>${s.note ? `<div class="sub muted" style="margin-top:2px">${esc(s.note)}</div>` : ""}</div>
           <div>${s.value === null ? `<div class="fb na" style="width:100%"></div>` : `<div class="fb" style="width:${Math.max(.5, Math.sqrt(s.value / max) * 100)}%"></div>`}</div>
           <div class="num" style="text-align:right"><b>${s.value === null ? "unavailable" : num(s.value)}</b></div>
           <div class="sub">${s.conversionFromPrevious !== null && s.conversionFromPrevious !== undefined ? `${pct(s.conversionFromPrevious, 1)} of ${esc(s.fromStep)}${s.previousConversion !== null && s.previousConversion !== undefined ? ` <span class="muted">(prev ${pct(s.previousConversion, 1)})</span>` : ""}` : esc(s.note || "")}</div></div>`).join("")}
@@ -1303,6 +1325,13 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
             ${(p.connections || []).filter(c => c.integration === i.integration && !i.items.some(it => it.id === c.externalId)).map(c => `<label class="opt"><input type="checkbox" data-int="${c.integration}" data-id="${esc(c.externalId)}" data-name="${esc(c.displayName || "")}" checked> ${esc(c.displayName || c.externalId)} <span class="sub">(linked; not visible with current credentials)</span></label>`).join("")}
           </div>`).join("")}
         </div></div>
+        <div class="card" style="margin-top:12px" id="nuxCard"><div class="hd"><h2>First-time player journey</h2><span class="sub">optional · NUX events in the order a new player should reach them</span></div>
+          <div class="sub" style="margin-bottom:8px">List the GA4 events your game sends during a new player's first session, e.g. <code>tutorial_begin</code> → <code>tutorial_step_3</code> → <code>tutorial_complete</code> → <code>level_1_complete</code>. The Funnel page then shows how many first-time players reach each step and where most of them quit.</div>
+          <div id="nuxRows"></div>
+          <div class="nux-tools"><button type="button" class="btn" id="nuxAdd">+ Add step</button><button type="button" class="btn" id="nuxLoad">Load events from GA4</button><button type="button" class="btn ghost" id="nuxStd">Use standard tutorial events</button></div>
+          <div id="nuxSug" style="margin-top:10px"></div>
+          <datalist id="nuxList"></datalist>
+        </div>
         <div style="position:sticky;bottom:0;z-index:5;display:flex;gap:8px;margin-top:16px;padding:12px 0;background:linear-gradient(transparent,var(--page) 30%)"><button class="btn primary lg">${existing ? "Save changes" : "Create project & start sync"}</button></div></form>
       ${existing ? `<section class="card mt-l" style="border-color:var(--err-border)"><div class="hd"><h2>Danger zone</h2></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span class="sub" style="flex:1;min-width:240px">Deletes this project with all of its synced data, targets, chats and reports. Your ad accounts are not affected.</span><button type="button" class="btn danger" id="pDel">Delete project…</button></div></section>` : ""}`;
     const f = $("#pForm");
@@ -1314,10 +1343,88 @@ details.move .meta { font-size: 12.5px; color: var(--text-2); display: flex; gap
       if (c.dataset.cur && !f.currency.value) { if (![...f.currency.options].some(o => o.value === c.dataset.cur)) f.currency.add(new Option(c.dataset.cur, c.dataset.cur)); f.currency.value = c.dataset.cur; }
       if (c.dataset.tz && !f.timeZone.value) { if (![...f.timeZone.options].some(o => o.value === c.dataset.tz)) f.timeZone.add(new Option(c.dataset.tz, c.dataset.tz)); f.timeZone.value = c.dataset.tz; }
     };
+    // ---- first-time player (NUX) journey editor
+    const NUX_RE = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
+    // Collected automatically by Firebase / GA4, so they say nothing about the game's own onboarding.
+    const AUTO_EVENTS = new Set(["first_open", "session_start", "user_engagement", "screen_view", "app_remove", "app_update", "os_update", "app_clear_data", "app_exception",
+      "firebase_campaign", "firebase_in_app_message_action", "firebase_in_app_message_dismiss", "firebase_in_app_message_impression", "notification_dismiss", "notification_foreground",
+      "notification_open", "notification_receive", "dynamic_link_app_open", "dynamic_link_first_open", "dynamic_link_app_update", "ad_impression", "ad_click", "ad_exposure", "ad_query", "ad_reward", "adunit_exposure", "in_app_purchase", "error", "app_store_subscription_convert", "app_store_subscription_renew", "app_store_refund"]);
+    const nux = (p.nuxEvents || []).map(x => ({ event: x.event || "", label: x.label || "" }));
+    let nuxEvents = null, nuxShowAuto = false;
+    const nuxBox = $("#nuxRows");
+    const renderNux = () => {
+      nuxBox.innerHTML = nux.length ? nux.map((x, i) => `<div class="nux-row" data-i="${i}"><span class="disc">${i + 1}</span>
+          <input type="text" class="nux-ev" list="nuxList" autocomplete="off" spellcheck="false" maxlength="40" aria-label="Step ${i + 1} GA4 event" placeholder="GA4 event, e.g. tutorial_begin" value="${esc(x.event)}">
+          <input type="text" class="nux-lb" maxlength="60" aria-label="Step ${i + 1} label" placeholder="Label (optional), e.g. Tutorial started" value="${esc(x.label)}">
+          <span class="acts"><button type="button" data-a="up" aria-label="Move step ${i + 1} up" ${i === 0 ? "disabled" : ""}>↑</button><button type="button" data-a="down" aria-label="Move step ${i + 1} down" ${i === nux.length - 1 ? "disabled" : ""}>↓</button><button type="button" data-a="del" aria-label="Remove step ${i + 1}">✕</button></span></div>`).join("")
+        : `<div class="sub nux-empty">No steps yet. Add them one by one, load the events your game sends from GA4, or start from the standard tutorial events.</div>`;
+      renderNuxSug();
+    };
+    const renderNuxSug = () => {
+      const box = $("#nuxSug");
+      if (!nuxEvents) { box.innerHTML = ""; return; }
+      const used = new Set(nux.map(x => x.event));
+      const own = nuxEvents.filter(e => !AUTO_EVENTS.has(e.name)), auto = nuxEvents.filter(e => AUTO_EVENTS.has(e.name));
+      const chip = (e) => `<button type="button" data-ev="${esc(e.name)}" ${used.has(e.name) ? "disabled" : ""} title="${num(e.count)} events">${esc(e.name)}<span class="n">${num(e.users)} players</span></button>`;
+      box.innerHTML = !nuxEvents.length ? `<div class="sub">GA4 received no events from this property in the last 28 days.</div>`
+        : `<div class="sub" style="margin-bottom:6px">Events from your game in the last 28 days, most players first. Click one to add it as the next step${nux.length >= 20 ? " (limit of 20 steps reached)" : ""}.</div>
+           <div class="chips">${own.map(chip).join("") || '<span class="sub">Only automatic Firebase events were found: the game sends no custom events yet.</span>'}</div>
+           ${auto.length ? `<button type="button" class="btn ghost" id="nuxAuto" style="margin-top:6px">${nuxShowAuto ? "Hide" : "Show"} ${auto.length} automatic Firebase events</button>${nuxShowAuto ? `<div class="chips" style="margin-top:6px">${auto.map(chip).join("")}</div>` : ""}` : ""}`;
+    };
+    // A chip from GA4 goes before the first step that fewer players reached: a first-time journey only loses players, so
+    // this usually lands it in the right place. Typed steps go at the end. The arrows change the order either way.
+    const addNux = (event, label = "", byPlayers = false) => {
+      if (nux.length >= 20) { toast("The journey can have at most 20 steps."); return; }
+      const users = (name) => nuxEvents?.find(e => e.name === name)?.users;
+      const mine = byPlayers ? users(event) : undefined;
+      const at = mine === undefined ? -1 : nux.findIndex(x => users(x.event) !== undefined && users(x.event) < mine);
+      nux.splice(at < 0 ? nux.length : at, 0, { event, label });
+      renderNux();
+    };
+    nuxBox.oninput = (e) => {
+      const row = e.target.closest(".nux-row"); if (!row) return;
+      const x = nux[+row.dataset.i];
+      if (e.target.classList.contains("nux-ev")) { x.event = e.target.value.trim(); e.target.classList.toggle("bad", !!x.event && !NUX_RE.test(x.event)); renderNuxSug(); }
+      else x.label = e.target.value;
+    };
+    nuxBox.onclick = (e) => {
+      const b = e.target.closest("button[data-a]"); if (!b) return;
+      const i = +b.closest(".nux-row").dataset.i;
+      if (b.dataset.a === "del") nux.splice(i, 1);
+      else { const j = b.dataset.a === "up" ? i - 1 : i + 1; [nux[i], nux[j]] = [nux[j], nux[i]]; }
+      renderNux();
+    };
+    $("#nuxAdd").onclick = () => { addNux(""); $$(".nux-ev", nuxBox).at(-1)?.focus(); };
+    $("#nuxStd").onclick = () => {
+      const have = new Set(nux.map(x => x.event));
+      [["tutorial_begin", "Tutorial started"], ["tutorial_complete", "Tutorial completed"]].forEach(([ev, lb]) => { if (!have.has(ev)) addNux(ev, lb); });
+    };
+    $("#nuxSug").onclick = (e) => {
+      if (e.target.closest("#nuxAuto")) { nuxShowAuto = !nuxShowAuto; renderNuxSug(); return; }
+      const c = e.target.closest("button[data-ev]"); if (c && !c.disabled) addNux(c.dataset.ev, "", true);
+    };
+    $("#nuxLoad").onclick = async () => {
+      const ga = $$("input[data-int='ga4']:checked", f)[0] || null;
+      const prop = ga?.dataset.id || (p.connections || []).find(c => c.integration === "ga4")?.externalId;
+      if (!prop) { toast("Tick the game's GA4 property under Data sources first.", 6000); return; }
+      const btn = $("#nuxLoad"); btn.disabled = true; btn.textContent = "Loading…";
+      try {
+        const r = await api(`/api/v2/ga4-events?property=${encodeURIComponent(prop)}`);
+        nuxEvents = r.events || [];
+        $("#nuxList").innerHTML = nuxEvents.map(e => `<option value="${esc(e.name)}">`).join("");
+        renderNuxSug();
+      } catch (err) { toast(err.message, 8000); }
+      finally { btn.disabled = false; btn.textContent = "Load events from GA4"; }
+    };
+    renderNux();
+
     f.onsubmit = async (e) => {
       e.preventDefault();
+      const badNux = nux.find(x => x.event && !NUX_RE.test(x.event));
+      if (badNux) { toast(`"${badNux.event}" isn't a valid GA4 event name: letters, digits and _ only, starting with a letter.`, 8000); return; }
       const body = Object.fromEntries(["name", "genre", "platforms", "androidStoreUrl", "iosStoreUrl", "targetCountries", "monetization", "currency", "timeZone", "launchStage", "objectives", "tutorialEvent", "purchaseEvent"].map(k => [k, f[k].value.trim() || null]));
       body.backfillDays = +f.backfillDays.value; body.syncIntervalMinutes = +f.syncIntervalMinutes.value;
+      body.nuxEvents = nux.filter(x => x.event).map(x => ({ event: x.event, label: x.label.trim() || null }));
       body.connections = $$("input[data-int]:checked", f).map(c => ({ integration: c.dataset.int, externalId: c.dataset.id, displayName: c.dataset.name || null, currency: c.dataset.cur || null, timeZone: c.dataset.tz || null }));
       try {
         const r = existing ? await post(`/api/v2/projects/${encodeURIComponent(existing.id)}`, body) : await post("/api/v2/projects", body);

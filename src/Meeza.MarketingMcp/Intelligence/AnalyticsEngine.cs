@@ -52,7 +52,7 @@ public sealed partial class AnalyticsEngine(ProjectStore projects, SyncStore syn
 
     /// <summary>Today in the project's reporting zone (project time zone, else the first connected account's).</summary>
     public static DateOnly Today(Project p) =>
-        TimeZones.Today(p.TimeZone ?? p.Connections.Select(c => c.TimeZone).FirstOrDefault(t => t is not null));
+        TimeZones.Today(p.TimeZone ?? p.Connections.Where(c => c.Integration != Integrations.Adjust).Select(c => c.TimeZone).FirstOrDefault(t => t is not null)); // Adjust reports UTC days, not the game's zone
 
     // ---------------------------------------------------------------- overview
 
@@ -402,6 +402,6 @@ public sealed partial class AnalyticsEngine(ProjectStore projects, SyncStore syn
 
     public static string Label(string integration) => integration switch
     {
-        Integrations.GoogleAds => "Google Ads", Integrations.Meta => "Meta Ads", Integrations.Ga4 => "GA4", Integrations.GooglePlay => "Google Play", _ => integration,
+        Integrations.GoogleAds => "Google Ads", Integrations.Meta => "Meta Ads", Integrations.Ga4 => "GA4", Integrations.Adjust => "Adjust", Integrations.GooglePlay => "Google Play", _ => integration,
     };
 }

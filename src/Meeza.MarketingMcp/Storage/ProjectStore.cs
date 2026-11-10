@@ -9,8 +9,9 @@ public static class Integrations
     public const string Meta = "meta";
     public const string Ga4 = "ga4";
     public const string GooglePlay = "google_play";
-    public static readonly string[] All = [GoogleAds, Meta, Ga4, GooglePlay];
-    public static readonly string[] Synced = [GoogleAds, Meta, Ga4];
+    public const string Adjust = "adjust";
+    public static readonly string[] All = [GoogleAds, Meta, Ga4, Adjust, GooglePlay];
+    public static readonly string[] Synced = [GoogleAds, Meta, Ga4, Adjust];
 }
 
 public sealed record Project
@@ -33,6 +34,12 @@ public sealed record Project
     public string? TutorialEvent { get; init; }
     /// <summary>GA4 event that marks a purchase. Default in_app_purchase.</summary>
     public string? PurchaseEvent { get; init; }
+    /// <summary>
+    /// First-time player (NUX) journey: GA4 events in the order a new player should hit them, e.g. tutorial_begin →
+    /// tutorial_step_3 → tutorial_complete → level_1_complete. Empty = not configured (the funnel uses the standard
+    /// tutorial events). Null on input means "keep what is saved".
+    /// </summary>
+    public List<NuxStep>? NuxEvents { get; init; } = [];
     public int BackfillDays { get; init; } = 90;
     public int SyncIntervalMinutes { get; init; } = 60;
     public string? CreatedAt { get; init; }
@@ -40,6 +47,9 @@ public sealed record Project
     public bool Archived { get; init; }
     public List<ProjectConnection> Connections { get; init; } = [];
 }
+
+/// <summary>One step of the first-time player journey: a GA4 event name and an optional friendly label.</summary>
+public sealed record NuxStep(string Event, string? Label = null);
 
 public sealed record ProjectConnection(string Integration, string ExternalId, string? DisplayName, string? Currency, string? TimeZone);
 
@@ -49,6 +59,7 @@ public sealed record KpiTarget(long Id, string Metric, string ScopeType, string 
 public sealed class ProjectStore(MarketingDb db)
 {
     public const int MinBackfillDays = 7, MaxBackfillDays = 730;
+    public const int MaxNuxSteps = 20;
 
     public IReadOnlyList<Project> List(bool includeArchived = false)
     {
@@ -77,9 +88,9 @@ public sealed class ProjectStore(MarketingDb db)
         var now = Db.Now();
         c.Exec("""
             INSERT INTO projects(id, name, genre, platforms, android_store_url, ios_store_url, target_countries, monetization, currency, timezone,
-                                 launch_stage, objectives, tutorial_event, purchase_event, backfill_days, sync_interval_minutes, created_at, updated_at, archived)
+                                 launch_stage, objectives, tutorial_event, purchase_event, nux_events, backfill_days, sync_interval_minutes, created_at, updated_at, archived)
             VALUES(@id, @Name, @Genre, @Platforms, @AndroidStoreUrl, @IosStoreUrl, @TargetCountries, @Monetization, @Currency, @TimeZone,
-                   @LaunchStage, @Objectives, @TutorialEvent, @PurchaseEvent, @BackfillDays, @SyncIntervalMinutes, @now, @now, 0)
+                   @LaunchStage, @Objectives, @TutorialEvent, @PurchaseEvent, @NuxEvents, @BackfillDays, @SyncIntervalMinutes, @now, @now, 0)
             """, Params(p, new() { ["id"] = id, ["now"] = now }), tx);
         foreach (var conn in p.Connections) AddConnection(c, tx, id, conn);
         tx.Commit();
@@ -88,13 +99,13 @@ public sealed class ProjectStore(MarketingDb db)
 
     public Project Update(string id, Project input)
     {
-        Require(id);
-        var p = Validate(input);
+        var current = Require(id);
+        var p = Validate(input.NuxEvents is null ? input with { NuxEvents = current.NuxEvents } : input);
         using var c = db.Open();
         c.Exec("""
             UPDATE projects SET name=@Name, genre=@Genre, platforms=@Platforms, android_store_url=@AndroidStoreUrl, ios_store_url=@IosStoreUrl,
                 target_countries=@TargetCountries, monetization=@Monetization, currency=@Currency, timezone=@TimeZone, launch_stage=@LaunchStage,
-                objectives=@Objectives, tutorial_event=@TutorialEvent, purchase_event=@PurchaseEvent, backfill_days=@BackfillDays,
+                objectives=@Objectives, tutorial_event=@TutorialEvent, purchase_event=@PurchaseEvent, nux_events=@NuxEvents, backfill_days=@BackfillDays,
                 sync_interval_minutes=@SyncIntervalMinutes, archived=@Archived, updated_at=@now
             WHERE id=@id
             """, Params(p, new() { ["id"] = id, ["now"] = Db.Now(), ["Archived"] = p.Archived ? 1 : 0 }));
@@ -142,6 +153,11 @@ public sealed class ProjectStore(MarketingDb db)
             foreach (var t in new[] { "ga4_daily", "ga4_dim_daily", "ga4_events_daily", "ga4_cohorts" })
                 c.Exec($"DELETE FROM {t} WHERE project_id=@pid AND property_id=@ext", args, tx);
         }
+        else if (integration == Integrations.Adjust)
+        {
+            foreach (var t in new[] { "adjust_daily", "adjust_campaign_daily", "adjust_cohorts" })
+                c.Exec($"DELETE FROM {t} WHERE project_id=@pid AND app_token=@ext", args, tx);
+        }
         c.Exec("DELETE FROM sync_state WHERE project_id=@pid AND integration=@platform AND external_id=@ext", args, tx);
     }
 
@@ -179,6 +195,7 @@ public sealed class ProjectStore(MarketingDb db)
             Integrations.Meta => Regex.IsMatch(v, @"^act_\d{5,20}$"),
             Integrations.Ga4 => Regex.IsMatch(v, @"^\d{5,15}$"),
             Integrations.GooglePlay => Regex.IsMatch(v, @"^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$"),
+            Integrations.Adjust => Regex.IsMatch(v, @"^[A-Za-z0-9]{6,32}$"),
             _ => false,
         };
         if (!ok) throw new ArgumentException($"'{conn.ExternalId}' is not a valid {conn.Integration} id.");
@@ -208,6 +225,15 @@ public sealed class ProjectStore(MarketingDb db)
             var v = Clean(e, 40);
             return v is null || Regex.IsMatch(v, "^[A-Za-z][A-Za-z0-9_]{0,39}$") ? v : throw new ArgumentException($"'{v}' is not a valid GA4 event name.");
         }
+        List<NuxStep> Nux(List<NuxStep>? steps)
+        {
+            var list = (steps ?? []).Where(s => !string.IsNullOrWhiteSpace(s?.Event))
+                .Select(s => new NuxStep(Event(s.Event)!, Clean(s.Label, 60))).ToList();
+            if (list.Count > MaxNuxSteps) throw new ArgumentException($"The first-time player journey can have at most {MaxNuxSteps} steps.");
+            var dup = list.GroupBy(s => s.Event, StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1);
+            if (dup is not null) throw new ArgumentException($"'{dup.Key}' appears twice in the first-time player journey. Each step needs its own event.");
+            return list;
+        }
         return p with
         {
             Name = name, Genre = Clean(p.Genre, 60), Platforms = platforms.Length == 0 ? null : string.Join(",", platforms.Distinct()),
@@ -215,6 +241,7 @@ public sealed class ProjectStore(MarketingDb db)
             TargetCountries = countries.Length == 0 ? null : string.Join(",", countries.Distinct()),
             Monetization = Clean(p.Monetization, 60), Currency = currency, TimeZone = tz, LaunchStage = Clean(p.LaunchStage, 40),
             Objectives = Clean(p.Objectives, 2000), TutorialEvent = Event(p.TutorialEvent), PurchaseEvent = Event(p.PurchaseEvent),
+            NuxEvents = Nux(p.NuxEvents),
             BackfillDays = Math.Clamp(p.BackfillDays == 0 ? 90 : p.BackfillDays, MinBackfillDays, MaxBackfillDays),
             SyncIntervalMinutes = Math.Clamp(p.SyncIntervalMinutes == 0 ? 60 : p.SyncIntervalMinutes, 15, 1440),
         };
@@ -227,6 +254,7 @@ public sealed class ProjectStore(MarketingDb db)
             ["Name"] = p.Name, ["Genre"] = p.Genre, ["Platforms"] = p.Platforms, ["AndroidStoreUrl"] = p.AndroidStoreUrl, ["IosStoreUrl"] = p.IosStoreUrl,
             ["TargetCountries"] = p.TargetCountries, ["Monetization"] = p.Monetization, ["Currency"] = p.Currency, ["TimeZone"] = p.TimeZone,
             ["LaunchStage"] = p.LaunchStage, ["Objectives"] = p.Objectives, ["TutorialEvent"] = p.TutorialEvent, ["PurchaseEvent"] = p.PurchaseEvent,
+            ["NuxEvents"] = p.NuxEvents is { Count: > 0 } n ? System.Text.Json.JsonSerializer.Serialize(n.Select(s => new { e = s.Event, l = s.Label })) : null,
             ["BackfillDays"] = p.BackfillDays, ["SyncIntervalMinutes"] = p.SyncIntervalMinutes,
         };
         foreach (var (k, v) in extra) d[k] = v;
@@ -246,9 +274,23 @@ public sealed class ProjectStore(MarketingDb db)
         AndroidStoreUrl = r.Str("android_store_url"), IosStoreUrl = r.Str("ios_store_url"), TargetCountries = r.Str("target_countries"),
         Monetization = r.Str("monetization"), Currency = r.Str("currency"), TimeZone = r.Str("timezone"), LaunchStage = r.Str("launch_stage"),
         Objectives = r.Str("objectives"), TutorialEvent = r.Str("tutorial_event"), PurchaseEvent = r.Str("purchase_event"),
+        NuxEvents = ParseNux(r.Str("nux_events")),
         BackfillDays = (int)(r.Long("backfill_days") ?? 90), SyncIntervalMinutes = (int)(r.Long("sync_interval_minutes") ?? 60),
         CreatedAt = r.Str("created_at"), UpdatedAt = r.Str("updated_at"), Archived = r.Long("archived") == 1,
     };
+
+    private static List<NuxStep> ParseNux(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            return doc.RootElement.EnumerateArray()
+                .Select(x => new NuxStep(x.GetProperty("e").GetString() ?? "", x.TryGetProperty("l", out var l) ? l.GetString() : null))
+                .Where(s => s.Event.Length > 0).ToList();
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or InvalidOperationException or KeyNotFoundException) { return []; }
+    }
 
     private static ProjectConnection MapConn(SqliteDataReader r) =>
         new(r.Str("integration")!, r.Str("external_id")!, r.Str("display_name"), r.Str("currency"), r.Str("timezone"));

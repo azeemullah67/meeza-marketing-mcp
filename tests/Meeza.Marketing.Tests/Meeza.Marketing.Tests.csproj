@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\Meeza.Marketing.PlayConsole\Meeza.Marketing.PlayConsole.csproj" />
     <ProjectReference Include="..\..\src\Meeza.MarketingMcp\Meeza.MarketingMcp.csproj" />
     <ProjectReference Include="..\..\src\Meeza.Marketing.Analytics\Meeza.Marketing.Analytics.csproj" />
+    <ProjectReference Include="..\..\src\Meeza.Marketing.Adjust\Meeza.Marketing.Adjust.csproj" />
   </ItemGroup>
 
 </Project>

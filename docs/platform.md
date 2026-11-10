@@ -7,8 +7,9 @@ read-only connectors. The original single-page live dashboard is still available
 
 ```text
 Google Ads ─┐                ┌─ Sync engine (backfill + incremental, retries, leases) ─► SQLite store (per project)
-Meta Ads   ─┼─ connectors ───┤                                                              │
-GA4        ─┘ (read-only)    └─ Live tools (MCP / classic dashboard)                         ▼
+Meta Ads   ─┤                │                                                              │
+GA4        ─┼─ connectors ───┤                                                              │
+Adjust     ─┘ (read-only)    └─ Live tools (MCP / classic dashboard)                         ▼
                                                                      Analytics engine ─► /api/v2 ─► app UI
                                                                                      └─► MCP get_project_* tools
                                                                                      └─► AI analyst (Claude API)
@@ -23,7 +24,7 @@ GA4        ─┘ (read-only)    └─ Live tools (MCP / classic dashboard)    
 
 A project = one game. It has its own settings (genre, platforms, store URLs, target countries, monetization, currency,
 time zone, launch stage, objectives, tutorial/purchase GA4 events), its own linked accounts (Google Ads customers,
-Meta ad accounts, GA4 properties, Play apps), its own synced data, KPI targets, analyst conversations and research
+Meta ad accounts, GA4 properties, Adjust apps, Play apps), its own synced data, KPI targets, analyst conversations and research
 reports. Credentials stay in the encrypted secret store and are shared; a project only selects which accounts it uses.
 Unlinking an account deletes that account's data from the project. Deleting a project deletes all of its data.
 
@@ -31,8 +32,8 @@ Unlinking an account deletes that account's data from the project. Deleting a pr
 
 | Behaviour | Implementation |
 |---|---|
-| Initial backfill | `backfill_days` (default 90) in chunks (Google Ads 31 d, Meta 14 d, GA4 30 d), newest first. Interrupted backfills resume from `backfilled_from`. |
-| Incremental | Every run re-reads a lookback window because platforms revise recent days: Google Ads 14 d (conversion window), Meta 10 d (attribution window), GA4 33 d (cohorts mature to D30 + ~48 h processing). A gap since the last sync is covered automatically. |
+| Initial backfill | `backfill_days` (default 90) in chunks (Google Ads 31 d, Meta 14 d, GA4 30 d, Adjust 14 d), newest first. Interrupted backfills resume from `backfilled_from`. |
+| Incremental | Every run re-reads a lookback window because platforms revise recent days: Google Ads 14 d (conversion window), Meta 10 d (attribution window), GA4 33 d (cohorts mature to D30 + ~48 h processing), Adjust 33 d (cohorts mature to D30, networks restate cost). A gap since the last sync is covered automatically. |
 | Schedule | Background scheduler checks every 5 min; each project syncs every `sync_interval_minutes` (default 60). Failures back off 15 min → 6 h. Disable with `MEEZA_SYNC=off`. |
 | Manual | **Sync now** in the header / Integrations, `meeza-marketing-mcp sync [project]`, or the `sync_project_data` MCP tool. |
 | Pagination | Meta follows `paging.next` and refuses to store a truncated window; GA4 follows `offset` until every row is read; Google Ads uses `searchStream`. |
@@ -58,6 +59,10 @@ the newest day with activity is older than expected), `error` (last attempt fail
   Cells a cohort has not reached are blank, never 0%; cells in the last two complete days are *provisional*; curves
   use mature cells only. Rolling retention and retention by creative are reported as unavailable (they need
   user-level data / an MMP) rather than approximated.
+* **Adjust** (when linked) adds install-cohort retention by network, campaign, country and platform
+  (`retained_users_dN` ÷ installs, UTC days, only fully reached days stored), campaign D1/D7 for Meta and Google Ads
+  matched by campaign id, and Adjust installs in attribution reconciliation. Campaign and project D1 in the campaign
+  table always come from the same source. Adjust cost is never added to ad-platform spend.
 * Dates are each account's/property's own calendar day; "today" is computed in the account's time zone.
 
 ## Analyses
@@ -86,6 +91,6 @@ give Claude the same data without a key.
 
 ```powershell
 meeza-marketing-mcp projects                       # projects, connections, last sync per account
-meeza-marketing-mcp sync [PROJECT_ID] [--integration google_ads|meta|ga4]
+meeza-marketing-mcp sync [PROJECT_ID] [--integration google_ads|meta|ga4|adjust]
 meeza-marketing-mcp dashboard                      # app + background sync
 ```

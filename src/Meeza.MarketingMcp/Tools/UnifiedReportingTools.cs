@@ -13,13 +13,13 @@ namespace Meeza.MarketingMcp.Tools;
 /// grouped by currency; installs from different measurement sources are reported side by side, never summed.
 /// </summary>
 [McpServerToolType]
-public sealed class UnifiedReportingTools(PlatformRegistry registry, AnalyticsService analytics)
+public sealed class UnifiedReportingTools(PlatformRegistry registry, AnalyticsService analytics, Meeza.Marketing.Adjust.AdjustService adjust)
 {
     private const string PlatformsHelp = "Optional comma-separated platforms: meta, google_ads. Omit for all configured platforms.";
     private const string DateHelp = "Date preset: today, yesterday, last_7_days, last_30_days, last_N_days, this_month, last_month. Ignored when startDate/endDate are given.";
 
     [McpServerTool(Name = "get_connected_accounts", ReadOnly = true, Destructive = false, OpenWorld = true)]
-    [Description("Show which platforms (Meta Ads, Google Ads, Google Play, Google Analytics 4 / Firebase) are configured and list the accounts/apps each one can access. Start here.")]
+    [Description("Show which platforms (Meta Ads, Google Ads, Google Play, Google Analytics 4 / Firebase, Adjust) are configured and list the accounts/apps each one can access. Start here.")]
     public Task<string> GetConnectedAccounts(CancellationToken ct) =>
         ToolRunner.RunAsync("get_connected_accounts", async r =>
         {
@@ -66,6 +66,18 @@ public sealed class UnifiedReportingTools(PlatformRegistry registry, AnalyticsSe
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     platforms.Add(new { platform = AnalyticsOptions.Platform, configured = true, error = ToolRunner.Describe(ex) });
+                }
+
+            if (!adjust.IsConfigured)
+                platforms.Add(new { platform = Meeza.Marketing.Adjust.AdjustOptions.Platform, configured = false, hint = Meeza.Marketing.Adjust.AdjustOptions.Hint });
+            else
+                try
+                {
+                    platforms.Add(new { platform = Meeza.Marketing.Adjust.AdjustOptions.Platform, configured = true, currency = adjust.Currency, apps = await adjust.GetAppsAsync(ct) });
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    platforms.Add(new { platform = Meeza.Marketing.Adjust.AdjustOptions.Platform, configured = true, error = ToolRunner.Describe(ex) });
                 }
 
             r.Data = platforms;

@@ -10,6 +10,8 @@ Meeza.MarketingMcp ───────────── host, CLI, unified to
         ├── Meeza.Marketing.GoogleAds ────► Google Ads API (REST SearchStream / GAQL)
         ├── Meeza.Marketing.PlayConsole ──► Play Developer Reporting API, Play Developer API (reviews),
         │                                   Cloud Storage (Play Console bulk report exports)
+        ├── Meeza.Marketing.Analytics ────► GA4 Data API / Admin API (read-only scope)
+        ├── Meeza.Marketing.Adjust ───────► Adjust Report Service API (GET only)
         └── Meeza.Marketing.Shared ─────── models, metric math, aggregation, secrets, OAuth, retry, redaction
 ```
 

@@ -34,6 +34,11 @@ public static class SettingKeys
     public const string Ga4ServiceAccountJson = "GA4_SERVICE_ACCOUNT_JSON";
     public const string Ga4PropertyIds = "GA4_PROPERTY_IDS";
 
+    // Adjust (mobile measurement partner)
+    public const string AdjustApiToken = "ADJUST_API_TOKEN";
+    public const string AdjustAppTokens = "ADJUST_APP_TOKENS";
+    public const string AdjustCurrency = "ADJUST_CURRENCY";
+
     // Claude (AI analyst and market research)
     public const string AnthropicApiKey = "ANTHROPIC_API_KEY";
     public const string AiModel = "MEEZA_AI_MODEL";
@@ -42,7 +47,7 @@ public static class SettingKeys
     {
         MetaAccessToken, MetaAppSecret,
         GoogleAdsServiceAccountJson, GoogleAdsDeveloperToken, GoogleAdsClientSecret, GoogleAdsRefreshToken,
-        PlayServiceAccountJson, Ga4ServiceAccountJson, AnthropicApiKey,
+        PlayServiceAccountJson, Ga4ServiceAccountJson, AdjustApiToken, AnthropicApiKey,
     };
 
     public static readonly IReadOnlyList<string> All =
@@ -52,6 +57,7 @@ public static class SettingKeys
         GoogleAdsLoginCustomerId, GoogleAdsCustomerIds, GoogleAdsApiVersion,
         PlayServiceAccountJson, PlayServiceAccountKeyPath, PlayPackageNames, PlayReportsBucket,
         Ga4ServiceAccountJson, Ga4PropertyIds,
+        AdjustApiToken, AdjustAppTokens, AdjustCurrency,
         AnthropicApiKey, AiModel,
     ];
 
