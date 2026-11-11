@@ -38,6 +38,37 @@ public sealed record Finding
 /// </summary>
 public sealed partial class AnalyticsEngine
 {
+    /// <summary>Days of spend before a new campaign's CPI is judged against the others (platform learning phase).</summary>
+    public const int LearningDays = 3;
+
+    /// <summary>
+    /// The D1 action, built from what was measured: tutorial completion and D1 by country, so the person sees whether
+    /// the first session or the audience mix is the likelier cause instead of a generic checklist.
+    /// </summary>
+    private string D1Action(Project p, string projectId, Filters f, decimal? d1, decimal? target, DateOnly today)
+    {
+        static string M(decimal? v, string _) => v is null ? "n/a" : $"{v:0.#}%";
+        var parts = new List<string> { target is null ? $"D1 is {M(d1, "%")}." : $"D1 is {M(d1, "%")} against a {M(target, "%")} target." };
+        var events = data.Ga4Events(projectId, f.Start, f.End).GroupBy(e => e.EventName).ToDictionary(g => g.Key, g => g.Sum(x => x.Users ?? 0));
+        var tutorial = p.TutorialEvent ?? "tutorial_complete";
+        if (events.TryGetValue("first_open", out var opens) && opens >= 30 && events.TryGetValue(tutorial, out var done))
+            parts.Add($"{done * 100m / opens:0}% of new players reach {tutorial} ({done:N0} of {opens:N0}); open Funnel and fix the step that loses the most players first.");
+        // "(not set)" is not a country anyone can target: GA4 could not place those players (testers, VPNs).
+        var countries = data.Cohorts(projectId, "country", f.Start, f.End).Where(c => c.SegmentValue is { Length: > 0 } v && v != "(not set)").GroupBy(c => c.SegmentValue)
+            .Select(g => (Country: g.Key, Point: RetentionAnalytics.Curve(g, today)[1]))
+            .Where(x => x.Point.Percent is not null && x.Point.CohortUsers >= 30).OrderByDescending(x => x.Point.CohortUsers).Take(3).ToArray();
+        if (countries.Length > 1)
+        {
+            parts.Add("D1 by country: " + string.Join(", ", countries.Select(x => $"{x.Country} {M(x.Point.Percent, "%")} ({x.Point.CohortUsers} players)")) + ".");
+            var low = countries.Where(x => d1 is not null && x.Point.Percent <= d1 * 0.7m).Select(x => x.Country).ToArray();
+            parts.Add(low.Length > 0 ? $"{string.Join(", ", low)} pulls D1 down: review targeting there before changing the game."
+                : "Countries retain alike, so the first session, not the audience mix, is the likelier cause.");
+        }
+        else if (countries.Length == 1)
+            parts.Add($"Almost all measured players are from {countries[0].Country}, so the audience mix is not the cause; the first session is.");
+        return string.Join(" ", parts);
+    }
+
     private static readonly string[] SeverityOrder = ["critical", "high", "medium", "low", "info"];
 
     /// <param name="afterSync">True when called at the end of a sync: sources are judged by how that sync ended, not
@@ -143,7 +174,9 @@ public sealed partial class AnalyticsEngine
                 ExpectedImpact = $"Up to {M(wasted.Sum(e => e.Now.Spend), "money")} per period could be redirected.",
                 Validation = ["Confirm the conversion action/app event is attached to the campaign.", "Check GA4 new users by campaign for these names."],
             });
-        foreach (var e in entities.Where(e => e.Flags.Contains("high_cpi")).Take(3))
+        // A campaign in its first days is still in the platform's learning phase: its CPI is not yet comparable.
+        static bool Learning(EntityRow e) => e.Prev.Spend == 0 && e.SpendTrend.Count(t => t.Value > 0) < LearningDays;
+        foreach (var e in entities.Where(e => e.Flags.Contains("high_cpi") && !Learning(e)).Take(3))
             list.Add(new Finding
             {
                 Id = $"high-cpi-{e.CampaignId}", Category = "campaign", Severity = "medium",
@@ -165,16 +198,46 @@ public sealed partial class AnalyticsEngine
                 Action = "Do not scale this campaign. Review its placements/audiences and whether creatives match real gameplay.",
                 Validation = ["Compare D1/D7 of this campaign's cohorts with the project average for 2 more weeks."],
             });
+        string[]? gaCampaigns = null;
         foreach (var e in entities.Where(e => e.Flags.Contains("investigate_before_scaling") && e.Now.Installs >= 5).Take(2))
+        {
+            var evidence = new List<Evidence> { new("CPI", M(e.Now.Cpi, "money"), null, Label(e.Platform)), new("Installs", $"{e.Now.Installs:0}", null, Label(e.Platform)) };
+            if (e.CohortUsers is null && e.Now.Installs >= 20)
+            {
+                // Enough installs, but no retention for them: the campaign's players cannot be found in GA4/Adjust.
+                // Waiting for more installs will not fix that; linking the attribution will.
+                gaCampaigns ??= data.Cohorts(projectId, "campaign", f.Start, f.End).GroupBy(c => c.SegmentValue)
+                    .OrderByDescending(g => g.Where(c => c.DayN == 0).Sum(c => c.CohortUsers)).Select(g => g.Key).Take(4).ToArray();
+                evidence.Add(new("GA4 first-user campaigns", gaCampaigns.Length == 0 ? "none recorded" : string.Join(", ", gaCampaigns), $"no \"{e.CampaignName}\"", "GA4"));
+                list.Add(new Finding
+                {
+                    Id = $"unattributed-{e.CampaignId}", Category = "tracking", Severity = "medium",
+                    Problem = $"No retention data for {e.CampaignName}: its players are not attributed", Segment = e.CampaignName, ComparisonPeriod = f.Range,
+                    Evidence = evidence,
+                    Hypothesis = e.Platform == Integrations.GoogleAds
+                        ? "Google Ads is not linked to the game's Firebase project, so GA4 does not record this campaign as the players' first-user campaign."
+                        : "Without an attribution SDK (Adjust) the game's analytics cannot tell which players came from this campaign.",
+                    Confidence = "high",
+                    Action = e.Platform == Integrations.GoogleAds
+                        ? "Link Google Ads to Firebase (Firebase console → Project settings → Integrations → Google Ads), so this campaign's D1/D7 can be measured before scaling it."
+                        : "Connect Adjust (or another MMP) for this game, so this campaign's D1/D7 can be measured before scaling it.",
+                    Validation = ["Its row in Retention (segment: campaign) shows cohort users a few days after the link."],
+                });
+                continue;
+            }
+            evidence.Add(new("D1", M(e.D1, "%"), e.CohortUsers is null ? "no GA4 cohort match" : $"{e.CohortUsers} users", "GA4"));
             list.Add(new Finding
             {
                 Id = $"investigate-{e.CampaignId}", Category = "campaign", Severity = "low",
                 Problem = $"Investigate before scaling: {e.CampaignName}", Segment = e.CampaignName, ComparisonPeriod = f.Range,
-                Evidence = [new("CPI", M(e.Now.Cpi, "money"), null, Label(e.Platform)), new("Installs", $"{e.Now.Installs:0}", null, Label(e.Platform)), new("D1", M(e.D1, "%"), e.CohortUsers is null ? "no GA4 cohort match" : $"{e.CohortUsers} users", "GA4")],
+                Evidence = evidence,
                 Hypothesis = "Cheap installs are only valuable if those users stay; retention evidence is missing or below average.",
-                Confidence = "low", Action = "Keep the budget steady until it has ≥20 installs and a matured D1/D7 cohort.",
+                Confidence = "low",
+                Action = e.Now.Installs < 20 ? $"Keep the budget steady until it has ≥20 installs (now {e.Now.Installs:0}) and a matured D1/D7 cohort."
+                    : $"Keep the budget steady: D1 of its players is {M(e.D1, "%")} ({e.CohortUsers} players), below the project's; scale only once it matches.",
                 Validation = ["Check this campaign's row in Retention (segment: campaign)."],
             });
+        }
 
         // ---- retention
         var curve = RetentionAnalytics.Curve(data.Cohorts(projectId, "all", f.Start, f.End), today);
@@ -200,7 +263,7 @@ public sealed partial class AnalyticsEngine
                     ? "Day-1 losses usually come from the first session: onboarding friction, difficulty, performance, or a change in acquisition mix (new country/campaign)."
                     : "Day-7 losses point to the mid-game loop: content depth, difficulty spikes, lack of goals/rewards.",
                 Confidence = now.CohortUsers >= 200 ? "high" : "medium",
-                Action = d == 1 ? "Check the funnel (tutorial completion) and compare retention by country/campaign to see whether the mix changed or the game did." : "Look at level progression events for where players stop; test difficulty or reward changes.",
+                Action = d == 1 ? D1Action(p, projectId, f, now.Percent, target, today) : "Look at level progression events for where players stop; test difficulty or reward changes.",
                 Validation = ["Compare the curve by app version / campaign in Retention.", "Re-check once the newest cohorts mature (they are excluded until then)."],
             });
         }
@@ -329,7 +392,10 @@ public sealed partial class AnalyticsEngine
 
         // ---- anomalies on the last complete day
         var lastDay = today.AddDays(-1);
-        var window = rows.Now.Concat(rows.Prev).Where(r => r.Date >= lastDay.AddDays(-14) && r.Date <= lastDay).GroupBy(r => r.Date).ToDictionary(g => g.Key, g => Perf.Of(g));
+        var recentRows = rows.Now.Concat(rows.Prev).Where(r => r.Date >= lastDay.AddDays(-14) && r.Date <= lastDay).ToArray();
+        // A campaign that first spent on the last day explains its own jump; it is a launch, not an anomaly.
+        var launched = recentRows.Where(r => (r.Spend ?? 0) > 0).GroupBy(r => r.CampaignId).Where(g => g.Min(r => r.Date) == lastDay).Select(g => g.Key).ToHashSet();
+        var window = recentRows.Where(r => !launched.Contains(r.CampaignId)).GroupBy(r => r.Date).ToDictionary(g => g.Key, g => Perf.Of(g));
         if (window.ContainsKey(lastDay) && window.Count >= 8)
         {
             foreach (var (name, sel) in new (string, Func<Perf, decimal?>)[] { ("Spend", x => x.Spend), ("Installs", x => x.Installs), ("CPI", x => x.Cpi) })

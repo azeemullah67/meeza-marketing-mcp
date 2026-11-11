@@ -326,3 +326,51 @@ public class AfterSyncHookTests
         Assert.Equal(0, calls);
     }
 }
+
+public class CampaignRuleTests
+{
+    private static (TestDb T, Project P, AnalyticsEngine Engine, DateOnly Today) Setup()
+    {
+        var t = new TestDb();
+        var p = t.Projects.Create(new Project { Name = "G", TimeZone = "UTC", Currency = "PKR", Connections = [TestDb.GoogleConn] });
+        var engine = new AnalyticsEngine(t.Projects, t.Syncs, t.Data, new SyncEngine(t.Projects, t.Syncs, [], NullLogger<SyncEngine>.Instance));
+        return (t, p, engine, TimeZones.Today("UTC"));
+    }
+
+    private static void Store(TestDb t, Project p, DateOnly today, IEnumerable<AdDailyRow> rows) =>
+        t.Facts.ReplaceWindow("ad_daily", TestDb.Scope(p.Id, "google_ads", "1234567890"), "date", today.AddDays(-30), today, rows.ToArray());
+
+    /// <summary>A steady campaign: 180-220 spend and 10 installs a day for the last 30 days.</summary>
+    private static IEnumerable<AdDailyRow> Steady(DateOnly today, decimal lastDaySpend = 200) =>
+        Enumerable.Range(1, 30).Select(i => TestDb.Ad(today.AddDays(-i), "c1", "a1", i == 1 ? lastDaySpend : 180 + i % 5 * 10, 10_000, 200, 10, name: "Main"));
+
+    [Fact]
+    public void A_campaign_that_starts_spending_is_neither_a_spend_anomaly_nor_a_high_CPI_problem()
+    {
+        // Gapsy, 2026-11-10: a second campaign's first day (PKR 1,647, 11 installs) tripled the day's spend and had a
+        // high first-day CPI. Both are the launch itself, not a problem.
+        var (t, p, engine, today) = Setup();
+        using var _ = t;
+        Store(t, p, today, Steady(today).Append(TestDb.Ad(today.AddDays(-1), "c2", "a2", 1600, 9_000, 150, 10, name: "New")));
+        var findings = engine.Findings(p.Id, ProblemCheck.Window(today));
+        Assert.DoesNotContain(findings, f => f.Id == "anomaly-spend");
+        Assert.DoesNotContain(findings, f => f.Id == "high-cpi-c2");
+
+        // The same jump from a campaign that was already running is still reported.
+        Store(t, p, today, Steady(today, lastDaySpend: 1800));
+        Assert.Contains(engine.Findings(p.Id, ProblemCheck.Window(today)), f => f.Id == "anomaly-spend");
+    }
+
+    [Fact]
+    public void A_campaign_with_installs_but_no_retention_data_is_an_attribution_problem()
+    {
+        // Gapsy: 347 installs, but GA4 has no cohort for the campaign. "Wait for 20 installs" was wrong advice.
+        var (t, p, engine, today) = Setup();
+        using var _ = t;
+        Store(t, p, today, Steady(today).Concat(Enumerable.Range(1, 30).Select(i => TestDb.Ad(today.AddDays(-i), "c0", "a0", 100, 10_000, 200, 10, name: "Cheap"))));
+        var findings = engine.Findings(p.Id, ProblemCheck.Window(today));
+        var f = Assert.Single(findings, x => x.Id == "unattributed-c0");
+        Assert.Contains("Link Google Ads to Firebase", f.Action);
+        Assert.DoesNotContain(findings, x => x.Id == "investigate-c0");
+    }
+}

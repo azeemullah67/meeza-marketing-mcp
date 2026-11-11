@@ -84,8 +84,12 @@ public sealed class ProblemCheck(AnalyticsEngine engine, ProjectStore projects, 
                 : f with
                 {
                     Confirmed = true,
+                    // What to do is decided on the recent data: older days (testers before launch, old builds) must
+                    // not shape the advice. The 30-day evidence stays for context.
+                    Action = r.Action,
                     Validated = $"Confirmed: also found in the last {days} days ({range.Range}).",
-                    Evidence = [.. f.Evidence, new Evidence($"Last {days} days", r.Problem, range.Range, "Validation")],
+                    // Show the recent measurement itself (e.g. "D1 retention: 15.9% (target 30%)"), not the problem's title again.
+                    Evidence = [.. f.Evidence, new Evidence($"Last {days} days", RecentValue(r), range.Range, "Validation")],
                 };
         }).ToArray();
 
@@ -133,6 +137,10 @@ public sealed class ProblemCheck(AnalyticsEngine engine, ProjectStore projects, 
         if (userDays == 0) return (false, "there is no GA4 activity to check");
         return revenue == 0 ? (true, $"still no revenue across {userDays:N0} user-days") : (false, $"revenue is now recorded ({revenue:0.##})");
     }
+
+    private static string RecentValue(Finding r) => r.Evidence.FirstOrDefault() is { } e
+        ? $"{e.Metric}: {e.Value}" + (e.Comparison is { Length: > 0 } c ? $" ({c})" : "")
+        : r.Problem;
 
     private static string Cut(string s, int max) => s.Length <= max ? s : s[..(max - 1)] + "…";
 }

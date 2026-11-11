@@ -821,7 +821,8 @@ a.pill:hover { border-color: currentColor; }
     const meta = [
       `found ${esc(ago(t.createdAt))}`,
       !closed ? "" : t.closedBy === "analysis" ? `closed by the check ${esc(ago(t.completedAt))}: the problem is no longer found` : `${t.status === "done" ? "marked done" : "dismissed"} ${esc(ago(t.completedAt))}`,
-      closed && t.detected ? '<span class="late">the latest check still finds this problem</span>' : "",
+      // Only a check that ran after the task was closed can say the problem is still there.
+      closed && t.detected && t.lastSeenAt && t.completedAt && t.lastSeenAt > t.completedAt ? '<span class="late">the latest check still finds this problem</span>' : "",
     ].filter(Boolean);
     return `<div class="task ${closed ? "closed" : ""}">
       <button type="button" class="tk ${t.status === "done" ? "on" : ""}" data-done="${t.id}" aria-pressed="${t.status === "done"}" aria-label="${t.status === "done" ? "Reopen" : "Mark as done"}: ${esc(t.title)}" title="${t.status === "done" ? "Reopen" : "Mark as done"}">${icon("check")}</button>
