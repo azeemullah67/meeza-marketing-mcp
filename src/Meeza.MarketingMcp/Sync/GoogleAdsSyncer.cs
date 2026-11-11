@@ -35,9 +35,19 @@ public sealed class GoogleAdsSyncer(GoogleAdsPlatform platform, FactStore facts)
         var scope = new Dictionary<string, object?> { ["project_id"] = projectId, ["platform"] = Integration, ["account_id"] = id };
         var adAccount = (await platform.ResolveAccountsAsync(id, ct).ConfigureAwait(false)).Single();
 
+        // ---- one ad account can advertise several games. Keep only App campaigns for this project's app (from its
+        // store links); campaigns without an app (Search, Display…) are kept. No store link set = keep everything.
+        var otherApps = await OtherAppCampaignsAsync(id, project, ct).ConfigureAwait(false);
+        bool Keep(JsonElement r) => !otherApps.ContainsKey(r.Str("campaign.id") ?? "");
+        if (otherApps.Count > 0)
+            result.Warnings.Add($"Skipped {otherApps.Count} campaign(s) for other apps: " +
+                string.Join(", ", otherApps.Values.Select(v => $"{v.Name} ({v.AppId})")) + ".");
+
         // ---- required: ad-level daily metrics and installs. Any failure here throws and nothing is written.
         var tracking = await platform.HasInstallTrackingAsync(adAccount, ct).ConfigureAwait(false);
-        var metrics = await client.SearchAsync(id, GoogleAdsQueries.AdDaily(range), ct).ConfigureAwait(false);
+        var allMetrics = await client.SearchAsync(id, GoogleAdsQueries.AdDaily(range), ct).ConfigureAwait(false);
+        var otherAppAds = allMetrics.Where(r => !Keep(r)).Select(r => r.Str("adGroupAd.ad.id")).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        var metrics = allMetrics.Where(Keep).ToArray();
         Dictionary<string, decimal>? installs = null;
         if (tracking)
         {
@@ -93,7 +103,7 @@ public sealed class GoogleAdsSyncer(GoogleAdsPlatform platform, FactStore facts)
             }).ToArray();
 
         // ---- required: country x campaign daily.
-        var geo = await client.SearchAsync(id, GoogleAdsQueries.CountryDaily(range), ct).ConfigureAwait(false);
+        var geo = (await client.SearchAsync(id, GoogleAdsQueries.CountryDaily(range), ct).ConfigureAwait(false)).Where(Keep).ToArray();
         Dictionary<string, decimal>? geoInstalls = null;
         if (tracking)
         {
@@ -131,7 +141,7 @@ public sealed class GoogleAdsSyncer(GoogleAdsPlatform platform, FactStore facts)
         List<CreativeRow>? creativeRows = null;
         try
         {
-            var assets = await client.SearchAsync(id, GoogleAdsQueries.AssetDaily(range), ct).ConfigureAwait(false);
+            var assets = (await client.SearchAsync(id, GoogleAdsQueries.AssetDaily(range), ct).ConfigureAwait(false)).Where(Keep).ToArray();
             Dictionary<string, decimal>? assetInstalls = null;
             var actions = (await client.SearchAsync(id, GoogleAdsQueries.InstallConversionActions, ct).ConfigureAwait(false))
                 .Select(r => $"customers/{id}/conversionActions/{r.Str("conversionAction.id")}").ToHashSet(StringComparer.Ordinal);
@@ -156,6 +166,7 @@ public sealed class GoogleAdsSyncer(GoogleAdsPlatform platform, FactStore facts)
 
             creativeRows = [];
             foreach (var r in (await client.SearchAsync(id, GoogleAdsQueries.AssetMetadata(range), ct).ConfigureAwait(false))
+                     .Where(r => !otherAppAds.Contains(r.Str("adGroupAd.ad.id") ?? ""))
                      .GroupBy(r => $"{r.Str("asset.id")}~{r.Str("adGroupAdAssetView.fieldType")}").Select(g => g.First()))
             {
                 var type = r.Str("asset.type") ?? "UNKNOWN";
@@ -184,12 +195,45 @@ public sealed class GoogleAdsSyncer(GoogleAdsPlatform platform, FactStore facts)
         // ---- write everything for this window in one transaction.
         using var c = facts.Db.Open();
         using var tx = c.BeginTransaction();
-        result.Add(facts.ReplaceWindow(c, tx, "ad_daily", scope, "date", from, to, adRows), "ads");
-        result.Add(facts.ReplaceWindow(c, tx, "campaign_country_daily", scope, "date", from, to, countryRows), "countries");
-        if (assetRows is not null) result.Add(facts.ReplaceWindow(c, tx, "asset_daily", scope, "date", from, to, assetRows), "assets");
+        // Remove anything stored earlier for other apps' campaigns (all dates), then replace the window. When the
+        // platform did return rows but all of them belong to other apps, the window is confirmed empty for this game.
+        PurgeOtherApps(c, tx, scope, otherApps.Keys, otherAppAds);
+        var filteredOnly = allMetrics.Count > 0 && metrics.Length == 0;
+        result.Add(facts.ReplaceWindow(c, tx, "ad_daily", scope, "date", from, to, adRows, allowEmptyReplace: filteredOnly), "ads");
+        result.Add(facts.ReplaceWindow(c, tx, "campaign_country_daily", scope, "date", from, to, countryRows, allowEmptyReplace: filteredOnly), "countries");
+        if (assetRows is not null) result.Add(facts.ReplaceWindow(c, tx, "asset_daily", scope, "date", from, to, assetRows, allowEmptyReplace: filteredOnly), "assets");
         tx.Commit();
         if (creativeRows is { Count: > 0 }) result.Records += facts.Upsert("creatives", scope, creativeRows);
         return result;
+    }
+
+    /// <summary>Campaign id → (name, app id) for App campaigns that promote an app other than the project's.</summary>
+    private async Task<Dictionary<string, (string? Name, string AppId)>> OtherAppCampaignsAsync(string accountId, Project project, CancellationToken ct)
+    {
+        var mine = project.AppIds;
+        var other = new Dictionary<string, (string? Name, string AppId)>(StringComparer.Ordinal);
+        if (mine.Count == 0) return other;
+        foreach (var r in await platform.Client.SearchAsync(accountId, GoogleAdsQueries.Campaigns(includeRemoved: true), ct).ConfigureAwait(false))
+        {
+            var appId = r.Str("campaign.appCampaignSetting.appId");
+            if (appId is { Length: > 0 } && !mine.Contains(appId) && r.Str("campaign.id") is { } cid)
+                other[cid] = (r.Str("campaign.name"), appId);
+        }
+        return other;
+    }
+
+    private static void PurgeOtherApps(Microsoft.Data.Sqlite.SqliteConnection c, Microsoft.Data.Sqlite.SqliteTransaction tx,
+        IReadOnlyDictionary<string, object?> scope, IEnumerable<string> campaignIds, IEnumerable<string> adIds)
+    {
+        var where = string.Join(" AND ", scope.Keys.Select(k => $"{k}=@{k}"));
+        foreach (var cid in campaignIds)
+        {
+            var args = new Dictionary<string, object?>(scope) { ["cid"] = cid };
+            foreach (var table in new[] { "ad_daily", "campaign_country_daily", "asset_daily" })
+                c.Exec($"DELETE FROM {table} WHERE {where} AND campaign_id=@cid", args, tx);
+        }
+        foreach (var aid in adIds)
+            c.Exec($"DELETE FROM creatives WHERE {where} AND ad_id=@aid", new Dictionary<string, object?>(scope) { ["aid"] = aid }, tx);
     }
 
     private static string AssetKey(JsonElement r) =>

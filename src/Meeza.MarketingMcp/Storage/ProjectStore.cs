@@ -51,6 +51,26 @@ public sealed record Project
     public string? UpdatedAt { get; init; }
     public bool Archived { get; init; }
     public List<ProjectConnection> Connections { get; init; } = [];
+
+    /// <summary>
+    /// This game's store IDs (Android package from the Play link, numeric App Store ID from the iOS link). An ad
+    /// account can advertise several games; ad syncs keep only campaigns promoting one of these apps. Empty = no store
+    /// link set, so every campaign is kept.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IReadOnlySet<string> AppIds => StoreAppIds(AndroidStoreUrl, IosStoreUrl);
+
+    public static IReadOnlySet<string> StoreAppIds(string? androidStoreUrl, string? iosStoreUrl)
+    {
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (androidStoreUrl is { Length: > 0 } a &&
+            System.Text.RegularExpressions.Regex.Match(a, @"[?&]id=([A-Za-z0-9_.]+)") is { Success: true } am)
+            ids.Add(am.Groups[1].Value);
+        if (iosStoreUrl is { Length: > 0 } i &&
+            System.Text.RegularExpressions.Regex.Match(i, @"/id(\d+)") is { Success: true } im)
+            ids.Add(im.Groups[1].Value);
+        return ids;
+    }
 }
 
 /// <summary>One step of the first-time player journey: a GA4 event name and an optional friendly label.</summary>

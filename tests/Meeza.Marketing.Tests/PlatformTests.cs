@@ -1183,3 +1183,21 @@ public class ClaudeGatewayTests
         Assert.False(new Meeza.MarketingMcp.Ai.ClaudeGateway(new Settings([])).IsConfigured);
     }
 }
+
+public class ProjectAppIdTests
+{
+    [Fact]
+    public void Reads_the_game_store_ids_from_its_store_links()
+    {
+        var ids = Project.StoreAppIds("https://play.google.com/store/apps/details?id=com.example.puzzle&hl=en",
+            "https://apps.apple.com/us/app/example-puzzle/id1234567890");
+        Assert.Equal(new[] { "1234567890", "com.example.puzzle" }, ids.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void No_store_link_means_no_campaign_filter()
+    {
+        Assert.Empty(Project.StoreAppIds(null, ""));
+        Assert.Empty(new Project { Name = "x", AndroidStoreUrl = "https://example.com/not-a-store-link" }.AppIds);
+    }
+}
