@@ -161,6 +161,8 @@ On macOS and Linux the encrypted store isn't available yet. Supply secrets as en
 
 ## Security
 
+To report a vulnerability, use GitHub private vulnerability reporting (Security tab → **Report a vulnerability**). See [SECURITY.md](SECURITY.md).
+
 ### Read-only
 
 - Only read endpoints are implemented against Meta, Google and Play. There's no mutate, edit or reply code path.
