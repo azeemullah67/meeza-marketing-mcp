@@ -170,10 +170,10 @@ public sealed partial class AnalyticsEngine(ProjectStore projects, SyncStore syn
             Previous = gaAvailable && !useCountry && f.Channel is null ? gaPrev.FirstOpens : prev.Installs,
             Target = TargetFor(targets, "installs", f)?.Target,
             Trend = gaAvailable && !useCountry && f.Channel is null ? gaNow.Days.Select(d => new TrendPoint(d.Date, d.FirstOpens, d.Date >= today)).ToArray() : Trend(x => x.Installs),
-            Source = gaAvailable && !useCountry && f.Channel is null ? "GA4 first_open (deduplicated, all sources)" : adSource + " (platform-attributed)",
+            Source = gaAvailable && !useCountry && f.Channel is null ? $"GA4 {p.FirstOpen} (deduplicated, all sources)" : adSource + " (platform-attributed)",
             LastUpdated = gaAvailable ? gaUpdated : adUpdated, Freshness = gaAvailable ? gaFresh : adFresh,
             Status = gaAvailable || cur.Installs is not null ? "ok" : "unavailable",
-            Definition = "With GA4 connected: first_open events (every source, each device counted once). Platform-attributed installs are shown alongside and are never added together.",
+            Definition = $"With GA4 connected: {p.FirstOpen} events (every source, each device counted once). Platform-attributed installs are shown alongside and are never added together.",
             Breakdown = installsBreakdown,
         });
 
@@ -303,7 +303,8 @@ public sealed partial class AnalyticsEngine(ProjectStore projects, SyncStore syn
     /// <summary>GA4 daily series honouring the country / channel filter (via dimension splits).</summary>
     internal Ga4Series LoadGa4(string projectId, Filters f)
     {
-        var events = data.Ga4Events(projectId, f.Start, f.End).Where(e => e.EventName == "first_open").ToDictionary(e => e.Date, e => e.Users);
+        var firstOpen = projects.Require(projectId).FirstOpen;
+        var events = data.Ga4Events(projectId, f.Start, f.End).Where(e => e.EventName == firstOpen).ToDictionary(e => e.Date, e => e.Users);
         if (f.Country is not null || f.Channel is not null)
         {
             var dim = f.Country is not null ? "country" : "channel";

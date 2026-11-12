@@ -20,7 +20,7 @@ Access is read-only (`analytics.readonly` scope).
    - [Google Analytics Data API](https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com)
    - [Google Analytics Admin API](https://console.cloud.google.com/apis/library/analyticsadmin.googleapis.com)
 2. **Choose the service account.** The easiest option is to reuse the Google Play one: leave `GA4_SERVICE_ACCOUNT_JSON` empty and it is used automatically. To use a separate account, save its JSON key in Settings → Google Analytics 4 / Firebase.
-3. **Grant access.** In Google Analytics, open **Admin → Property access management → + → Add users**, paste the service account email (shown in Settings) and choose **Viewer**. From Firebase you can get there via Project settings → Integrations → Google Analytics.
+3. **Grant access.** In Google Analytics, open **Admin → Property access management → + → Add users**, paste the service account email (shown on the dashboard's Data sources page) and choose **Viewer**. From Firebase you can get there via Project settings → Integrations → Google Analytics.
 4. **Optional:** set `GA4_PROPERTY_IDS` to the property ID (Admin → Property details, digits only, not the `G-…` measurement ID) to limit access to one game.
 5. Press **Test connection** in Settings, or run `meeza-marketing-mcp check`.
 

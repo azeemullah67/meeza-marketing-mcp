@@ -381,8 +381,10 @@ public static class AccessKey
                 var existing = File.ReadAllText(FilePath).Trim();
                 if (existing.Length >= 32)
                 {
+                    // A key file left behind by an older version or restored from a backup may be readable by others.
+                    PrivateStorage.MakeFilePrivate(FilePath);
                     _key = existing;
-                    _stamp = stamp;
+                    _stamp = File.GetLastWriteTimeUtc(FilePath);
                     return existing;
                 }
             }
@@ -402,7 +404,10 @@ public static class AccessKey
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _key ??= NewKey(); // session-only key
+            // Fail closed. A key that came from the file is dropped the moment the file cannot be read: it may have just
+            // been rotated or deleted, and keeping it would let revoked links and cookies go on working. Only a key
+            // that never had a file (profile not writable) is kept for the session.
+            if (_key is null || _stamp is not null) _key = NewKey();
             _stamp = null;
             return _key;
         }

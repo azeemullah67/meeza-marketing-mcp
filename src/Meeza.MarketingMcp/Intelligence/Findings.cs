@@ -51,7 +51,7 @@ public sealed partial class AnalyticsEngine
         var parts = new List<string> { target is null ? $"D1 is {M(d1, "%")}." : $"D1 is {M(d1, "%")} against a {M(target, "%")} target." };
         var events = data.Ga4Events(projectId, f.Start, f.End).GroupBy(e => e.EventName).ToDictionary(g => g.Key, g => g.Sum(x => x.Users ?? 0));
         var tutorial = p.TutorialEvent ?? "tutorial_complete";
-        if (events.TryGetValue("first_open", out var opens) && opens >= 30 && events.TryGetValue(tutorial, out var done))
+        if (events.TryGetValue(p.FirstOpen, out var opens) && opens >= 30 && events.TryGetValue(tutorial, out var done))
             parts.Add($"{done * 100m / opens:0}% of new players reach {tutorial} ({done:N0} of {opens:N0}); open Funnel and fix the step that loses the most players first.");
         // "(not set)" is not a country anyone can target: GA4 could not place those players (testers, VPNs).
         var countries = data.Cohorts(projectId, "country", f.Start, f.End).Where(c => c.SegmentValue is { Length: > 0 } v && v != "(not set)").GroupBy(c => c.SegmentValue)
@@ -272,10 +272,10 @@ public sealed partial class AnalyticsEngine
         var events = data.Ga4Events(projectId, f.Start, f.End).GroupBy(e => e.EventName).ToDictionary(g => g.Key, g => g.Sum(x => x.Users ?? 0));
         var prevEvents = data.Ga4Events(projectId, f.Previous().Start, f.Previous().End).GroupBy(e => e.EventName).ToDictionary(g => g.Key, g => g.Sum(x => x.Users ?? 0));
         var tutorial = p.TutorialEvent ?? "tutorial_complete";
-        if (events.TryGetValue("first_open", out var opens) && opens >= 30 && events.TryGetValue(tutorial, out var done))
+        if (events.TryGetValue(p.FirstOpen, out var opens) && opens >= 30 && events.TryGetValue(tutorial, out var done))
         {
             var rate = Math.Round(done * 100m / opens, 1);
-            decimal? prevRate = prevEvents.TryGetValue("first_open", out var po) && po >= 30 && prevEvents.TryGetValue(tutorial, out var pd) ? Math.Round(pd * 100m / po, 1) : null;
+            decimal? prevRate = prevEvents.TryGetValue(p.FirstOpen, out var po) && po >= 30 && prevEvents.TryGetValue(tutorial, out var pd) ? Math.Round(pd * 100m / po, 1) : null;
             if (rate < 60 || prevRate is not null && rate < prevRate * 0.85m)
             {
                 // Walk the onboarding steps in order and find where the most new players are lost, so the advice
@@ -286,7 +286,7 @@ public sealed partial class AnalyticsEngine
                     .Where(s => events.ContainsKey(s.Event)).DistinctBy(s => s.Event).ToList();
                 if (!path.Any(s => s.Event == tutorial)) path.Add((tutorial, tutorial));
                 var losses = new List<(string From, string To, long Lost, long Base)>();
-                var (prevLabel, prevUsers) = ("first_open", opens);
+                var (prevLabel, prevUsers) = (p.FirstOpen, opens);
                 foreach (var s in path)
                 {
                     var u = events[s.Event];
@@ -295,7 +295,7 @@ public sealed partial class AnalyticsEngine
                 }
                 var worst = losses.MaxBy(l => l.Lost);
                 var worstPct = worst.Base > 0 ? Math.Round(worst.Lost * 100m / worst.Base, 0) : 0;
-                var beforeTutorial = worst.From == "first_open";
+                var beforeTutorial = worst.From == p.FirstOpen;
                 var genericStep = !beforeTutorial && (worst.To == "tutorial_step" || worst.From == "tutorial_step") && p.NuxEvents is not { Count: > 0 };
                 list.Add(new Finding
                 {

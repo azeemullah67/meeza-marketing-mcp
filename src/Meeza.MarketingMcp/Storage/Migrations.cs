@@ -257,5 +257,10 @@ public static class Migrations
         -- GA4 event that marks the start of the tutorial (funnel step). NULL = tutorial_begin.
         ALTER TABLE projects ADD COLUMN tutorial_start_event TEXT;
         """),
+        (6, """
+        -- GA4 events for a first open (funnel step) and an uninstall. NULL = first_open / app_remove.
+        ALTER TABLE projects ADD COLUMN first_open_event TEXT;
+        ALTER TABLE projects ADD COLUMN app_remove_event TEXT;
+        """),
     ];
 }

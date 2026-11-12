@@ -1,7 +1,7 @@
 # Marketing intelligence platform
 
 The dashboard at `http://127.0.0.1:5057/` is a multi-project marketing intelligence app built on top of the existing
-read-only connectors. The original single-page live dashboard is still available at `/classic`.
+read-only connectors. The original single-page live dashboard was retired; `/classic` redirects to the app.
 
 ## How data flows
 
@@ -9,7 +9,7 @@ read-only connectors. The original single-page live dashboard is still available
 Google Ads ─┐                ┌─ Sync engine (backfill + incremental, retries, leases) ─► SQLite store (per project)
 Meta Ads   ─┤                │                                                              │
 GA4        ─┼─ connectors ───┤                                                              │
-Adjust     ─┘ (read-only)    └─ Live tools (MCP / classic dashboard)                         ▼
+Adjust     ─┘ (read-only)    └─ Live tools (MCP)                                             ▼
                                                                      Analytics engine ─► /api/v2 ─► app UI
                                                                                      └─► MCP get_project_* tools
                                                                                      └─► AI analyst (Claude API)
@@ -35,7 +35,7 @@ Unlinking an account deletes that account's data from the project. Deleting a pr
 | Initial backfill | `backfill_days` (default 90) in chunks (Google Ads 31 d, Meta 14 d, GA4 30 d, Adjust 14 d), newest first. Interrupted backfills resume from `backfilled_from`. |
 | Incremental | Every run re-reads a lookback window because platforms revise recent days: Google Ads 14 d (conversion window), Meta 10 d (attribution window), GA4 33 d (cohorts mature to D30 + ~48 h processing), Adjust 33 d (cohorts mature to D30, networks restate cost). A gap since the last sync is covered automatically. |
 | Schedule | Background scheduler checks every 5 min; each project syncs every `sync_interval_minutes` (default 60). Failures back off 15 min → 6 h. Disable with `MEEZA_SYNC=off`. |
-| Manual | **Sync now** in the header / Integrations, `meeza-marketing-mcp sync [project]`, or the `sync_project_data` MCP tool. |
+| Manual | **Sync now** in the header or on the Data sources page, `meeza-marketing-mcp sync [project]`, or the `sync_project_data` MCP tool. |
 | Pagination | Meta follows `paging.next` and refuses to store a truncated window; GA4 follows `offset` until every row is read; Google Ads uses `searchStream`. |
 | Retries / rate limits | `RetryHandler`: exponential backoff with jitter on 429/5xx/network errors, honouring `Retry-After`. Google OAuth tokens refresh automatically. |
 | Idempotency | Each window is replaced inside one transaction (delete window → insert), keyed by primary keys, so re-runs never duplicate and restated values overwrite. |
@@ -43,7 +43,7 @@ Unlinking an account deletes that account's data from the project. Deleting a pr
 | Concurrency | A database lease per account stops the MCP server and a terminal dashboard from syncing the same account at once. Runs left `running` by a crash are marked failed at start-up. |
 | Status per account | last attempt, last success, latest data date, records, duration, error, warnings, consecutive failures, history of runs. |
 
-**Freshness** (shown on every KPI card, in the header and in Integrations): `fresh`, `syncing`, `delayed` (synced, but
+**Freshness** (shown on every KPI card, in the header and on the Data sources page): `fresh`, `syncing`, `delayed` (synced, but
 the newest day with activity is older than expected), `error` (last attempt failed; data is from the last success),
 `stale` (no success for 3× the interval / 6 h), `never`.
 
@@ -82,9 +82,20 @@ the newest day with activity is older than expected), `error` (last attempt fail
 
 ## AI features (optional)
 
-Add an Anthropic API key in **Integrations → Claude** (stored encrypted, or `ANTHROPIC_API_KEY`). Requests use
-`claude-opus-5-5` (override with `MEEZA_AI_MODEL`) with server-side refusal fallbacks (`fallbacks: "default"`).
-Without a key, everything except the chat and research works. In Claude Desktop / Code, the `get_project_*` MCP tools
+The AI analyst chat has two engines, chosen in **Data sources → Claude → Engine** (`MEEZA_AI_ENGINE`):
+
+- `claude_code`: the Claude Code app installed on this computer, signed in with your Claude account. No API key.
+  Each question runs `claude -p` headless with no tools, no MCP servers, no user or project settings and no saved
+  session; the dashboard passes the project's views for the last 14 complete days (overview, findings, funnel,
+  campaigns, retention, creatives, attribution, forecast, sync status) in the prompt. The app uses its own default
+  model unless `MEEZA_AI_MODEL` is set.
+- `api`: an Anthropic API key in **Data sources → Claude** (stored encrypted, or `ANTHROPIC_API_KEY`). Requests use
+  `claude-opus-5-5` (override with `MEEZA_AI_MODEL`) with server-side refusal fallbacks (`fallbacks: "default"`),
+  and Claude picks the period and filters itself through read-only tools.
+
+Left empty, the engine is the API when a key is saved, otherwise the Claude app when it is installed. Market research
+always needs the API key (its web search and citations run through the API). Without either, everything except the
+chat and research works. In Claude Desktop / Code, the `get_project_*` MCP tools
 give Claude the same data without a key.
 
 ## CLI

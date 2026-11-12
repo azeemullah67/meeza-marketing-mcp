@@ -41,6 +41,11 @@ public static class CliCommands
     public static bool IsCommand(string[] args) =>
         args.Length > 0 && args[0].ToLowerInvariant() is "check" or "dashboard" or "secrets" or "auth" or "sync" or "projects" or "help" or "--help" or "-h" or "/?";
 
+    /// <summary>True for <c>dashboard --demo</c>. The host checks this before it builds its services, so a demo never loads real ones.</summary>
+    public static bool IsDemo(string[] args) =>
+        args.Length > 1 && args[0].Equals("dashboard", StringComparison.OrdinalIgnoreCase) &&
+        args.Skip(1).Any(a => a.Equals("--demo", StringComparison.OrdinalIgnoreCase));
+
     public static async Task<int> RunAsync(string[] args, IServiceProvider services)
     {
         try
@@ -48,7 +53,7 @@ public static class CliCommands
             return args[0].ToLowerInvariant() switch
             {
                 "check" => await CheckAsync(services),
-                "dashboard" when args.Length > 1 && args[1].Equals("rotate-key", StringComparison.OrdinalIgnoreCase) => RotateDashboardKey(),
+                "dashboard" when args.Length > 1 && args[1].Equals("rotate-key", StringComparison.OrdinalIgnoreCase) => await RotateDashboardKeyAsync(),
                 "dashboard" => await DashboardAsync(services, args.Any(a => a.Equals("--demo", StringComparison.OrdinalIgnoreCase)), !args.Any(a => a.Equals("--no-browser", StringComparison.OrdinalIgnoreCase))),
                 "secrets" => Secrets(args.Skip(1).ToArray(), services),
                 "projects" => Projects(services),
@@ -72,11 +77,16 @@ public static class CliCommands
 
     // ---------------------------------------------------------------- dashboard
 
-    private static int RotateDashboardKey()
+    private static async Task<int> RotateDashboardKeyAsync()
     {
         Meeza.MarketingMcp.Dashboard.AccessKey.Rotate();
         Console.WriteLine("Dashboard access key replaced. Every old link and browser session is now invalid, in every running instance.");
-        Console.WriteLine("New link: " + Meeza.MarketingMcp.Dashboard.DashboardServer.Url);
+        // The link carries the new key. As everywhere else, it is only shown for a listener that proves it is this
+        // user's dashboard; an empty port or another program on it gets no link.
+        if (Meeza.MarketingMcp.Dashboard.DashboardServer.PortInUse() && await Meeza.MarketingMcp.Dashboard.DashboardServer.IsOurInstanceAsync(CancellationToken.None))
+            Console.WriteLine("New link: " + Meeza.MarketingMcp.Dashboard.DashboardServer.Url);
+        else
+            Console.WriteLine("Run `meeza-marketing-mcp dashboard` (or ask Claude to open the dashboard) to get a link with the new key.");
         return 0;
     }
 
@@ -96,23 +106,60 @@ public static class CliCommands
         }
 
         sp.GetRequiredService<Meeza.MarketingMcp.Dashboard.DashboardData>().Demo = demo;
-        await using var server = sp.GetRequiredService<Meeza.MarketingMcp.Dashboard.DashboardServer>();
-        if (!await server.StartAsync(CancellationToken.None))
-            throw new InvalidOperationException($"Could not start the dashboard on port {Meeza.MarketingMcp.Dashboard.DashboardServer.Port}. Set MEEZA_DASHBOARD_PORT to a free port.");
+        if (demo) SeedDemo(sp);
+        try
+        {
+            await using var server = sp.GetRequiredService<Meeza.MarketingMcp.Dashboard.DashboardServer>();
+            if (!await server.StartAsync(CancellationToken.None))
+                throw new InvalidOperationException($"Could not start the dashboard on port {Meeza.MarketingMcp.Dashboard.DashboardServer.Port}. Set MEEZA_DASHBOARD_PORT to a free port.");
 
-        Console.WriteLine(demo ? "Meeza Marketing dashboard is running with DEMO DATA (no accounts are contacted)." : "Meeza Marketing dashboard is running (read-only, this computer only).");
-        Console.WriteLine("Open: " + url);
-        Console.WriteLine("Press Ctrl+C to stop.");
-        if (openBrowser) Meeza.MarketingMcp.Dashboard.DashboardServer.TryOpenBrowser(url);
+            Console.WriteLine(demo ? "Meeza Marketing dashboard is running with DEMO DATA (no accounts are contacted)." : "Meeza Marketing dashboard is running (read-only, this computer only).");
+            Console.WriteLine("Open: " + url);
+            Console.WriteLine("Press Ctrl+C to stop.");
+            if (openBrowser) Meeza.MarketingMcp.Dashboard.DashboardServer.TryOpenBrowser(url);
 
-        using var stop = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
-        // Background synchronization keeps the stored data current while the dashboard is open.
-        var scheduler = demo ? null : sp.GetRequiredService<Meeza.MarketingMcp.Sync.SyncScheduler>();
-        if (scheduler is not null) await scheduler.StartAsync(stop.Token);
-        try { await Task.Delay(Timeout.Infinite, stop.Token); } catch (OperationCanceledException) { }
-        if (scheduler is not null) await scheduler.StopAsync(CancellationToken.None);
-        return 0;
+            using var stop = new CancellationTokenSource();
+            Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+            // Background synchronization keeps the stored data current while the dashboard is open.
+            var scheduler = demo ? null : sp.GetRequiredService<Meeza.MarketingMcp.Sync.SyncScheduler>();
+            if (scheduler is not null) await scheduler.StartAsync(stop.Token);
+            try { await Task.Delay(Timeout.Infinite, stop.Token); } catch (OperationCanceledException) { }
+            if (scheduler is not null) await scheduler.StopAsync(CancellationToken.None);
+            return 0;
+        }
+        finally
+        {
+            if (demo) RemoveDemoDatabase(sp);
+        }
+    }
+
+    /// <summary>
+    /// Fills the demo process's throwaway database with one invented project. Refuses to run on anything but a demo
+    /// host, so sample data can never be written into the user's real store.
+    /// </summary>
+    internal static void SeedDemo(IServiceProvider sp)
+    {
+        if (!sp.GetRequiredService<Meeza.MarketingMcp.Dashboard.DemoMode>().Enabled)
+            throw new InvalidOperationException("Demo data can only be created in a demo process.");
+        var project = Meeza.MarketingMcp.Dashboard.DemoProject.Seed(
+            sp.GetRequiredService<Meeza.MarketingMcp.Storage.ProjectStore>(),
+            sp.GetRequiredService<Meeza.MarketingMcp.Storage.FactStore>(),
+            sp.GetRequiredService<Meeza.MarketingMcp.Storage.SyncStore>(),
+            Meeza.MarketingMcp.Sync.TimeZones.Today(Meeza.MarketingMcp.Dashboard.DemoProject.TimeZone)); // the demo project's own "today", so its data ends yesterday there
+        // A real sync ends with the 30-day check; run it over the invented data so Overview and Tasks are filled in too.
+        // It only reads the local store.
+        sp.GetRequiredService<Meeza.MarketingMcp.Intelligence.ProblemCheck>().Run(project.Id, "demo");
+    }
+
+    /// <summary>Deletes the demo process's throwaway database. Refuses to run on anything but a demo host.</summary>
+    internal static void RemoveDemoDatabase(IServiceProvider sp)
+    {
+        if (!sp.GetRequiredService<Meeza.MarketingMcp.Dashboard.DemoMode>().Enabled)
+            throw new InvalidOperationException("Only a demo process has a throwaway database.");
+        var path = sp.GetRequiredService<Meeza.MarketingMcp.Storage.MarketingDb>().Path;
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        foreach (var f in new[] { path, path + "-wal", path + "-shm" })
+            try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* a leftover temp file is harmless */ }
     }
 
     // ---------------------------------------------------------------- projects & sync

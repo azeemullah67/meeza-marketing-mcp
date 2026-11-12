@@ -44,6 +44,9 @@ public sealed class AnalystService(ClaudeGateway claude, AnalyticsEngine engine,
 
     public bool IsConfigured => claude.IsConfigured;
 
+    /// <summary>"api", "claude_code" (the local Claude app), or null when neither is set up.</summary>
+    public string? Engine => claude.Engine;
+
     public async Task<AnalystAnswer> AskAsync(string projectId, string? conversationId, string question, CancellationToken ct)
     {
         var p = projects.Require(projectId);
@@ -64,6 +67,7 @@ public sealed class AnalystService(ClaudeGateway claude, AnalyticsEngine engine,
                       $"Unless the question says otherwise, analyse the last 14 complete days ({Db.Iso(today.AddDays(-14))} to {Db.Iso(today.AddDays(-1))}) against the 14 days before.\n\nQuestion: {question}",
         });
         Save(projectId, conversationId, "user", question, null);
+        if (claude.UsesLocalApp) return await AskLocalAsync(p, today, conversationId, question, history, ct).ConfigureAwait(false);
 
         using var client = claude.Client();
         var evidence = new List<ToolCallEvidence>();
@@ -110,6 +114,54 @@ public sealed class AnalystService(ClaudeGateway claude, AnalyticsEngine engine,
         if (final.Length == 0) final = "No answer was produced (the analysis hit its tool-call limit). Try a narrower question.";
         Save(projectId, conversationId, "assistant", final, JsonSerializer.Serialize(evidence));
         return new AnalystAnswer(conversationId, final, evidence, stop, claude.Model);
+    }
+
+    // ---------------------------------------------------------------- local Claude app (no API key)
+
+    /// <summary>Views given to the local Claude app, which has no tools: the same data the API tools return, for the default period.</summary>
+    public static readonly (string Tool, string Input)[] LocalViews =
+    [
+        ("get_sync_status", "{}"), ("get_overview", "{}"), ("get_findings", "{}"), ("get_funnel", "{}"),
+        ("get_campaigns", """{"level":"campaign"}"""), ("get_retention", "{}"), ("get_creatives", "{}"), ("get_attribution", "{}"), ("get_forecast", "{}"),
+    ];
+
+    private const int LocalViewChars = 25_000;
+
+    public static string LocalSystemPrompt => SystemPrompt.Replace(
+        "using ONLY the project's synchronized data, which you read with the tools.",
+        "using ONLY the project's synchronized data, given to you in <data> blocks (each is the JSON output of one read-only view).")
+        .Replace(
+        "- Call tools before answering anything quantitative. Never state a number that did not come from a tool result in this conversation.",
+        "- Never state a number that is not in the <data> blocks. The data covers the period stated in the message; if the question needs another period or a breakdown that is not there, say so and say which page of the dashboard shows it.");
+
+    private async Task<AnalystAnswer> AskLocalAsync(Project p, DateOnly today, string conversationId, string question, IReadOnlyList<StoredMessage> history, CancellationToken ct)
+    {
+        var evidence = new List<ToolCallEvidence>();
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"Project: {p.Name} (genre {p.Genre ?? "not set"}; platforms {p.Platforms ?? "not set"}; target countries {p.TargetCountries ?? "not set"}; " +
+                      $"stage {p.LaunchStage ?? "not set"}; objectives: {p.Objectives ?? "not set"}). Today in the project's time zone: {Db.Iso(today)}.");
+        sb.AppendLine($"The data covers the last 14 complete days ({Db.Iso(today.AddDays(-14))} to {Db.Iso(today.AddDays(-1))}); comparisons are against the 14 days before. The forecast uses the last 28 days.");
+        sb.AppendLine();
+        foreach (var (tool, raw) in LocalViews)
+        {
+            var input = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(raw)!;
+            var (content, isError) = RunTool(p, today, tool, input);
+            if (content.Length > LocalViewChars) content = content[..LocalViewChars] + "\n…[truncated]";
+            evidence.Add(new ToolCallEvidence(tool, input, content.Length, isError));
+            sb.Append("<data view=\"").Append(tool).AppendLine("\">").AppendLine(content).AppendLine("</data>");
+        }
+        if (history.Count > 0)
+        {
+            sb.AppendLine().AppendLine("Earlier in this conversation:");
+            foreach (var h in history) sb.Append(h.Role == "user" ? "User: " : "Analyst: ").AppendLine(h.Content);
+        }
+        sb.AppendLine().Append("Question: ").AppendLine(question);
+
+        var result = await claude.RunLocalAsync(LocalSystemPrompt, sb.ToString(), ct).ConfigureAwait(false);
+        var final = result.Text.Trim();
+        if (final.Length == 0) final = "No answer was produced. Try a narrower question.";
+        Save(p.Id, conversationId, "assistant", final, JsonSerializer.Serialize(evidence));
+        return new AnalystAnswer(conversationId, final, evidence, result.StopReason, "Claude app" + (result.Model is null ? "" : $" ({result.Model})"));
     }
 
     // ---------------------------------------------------------------- tools

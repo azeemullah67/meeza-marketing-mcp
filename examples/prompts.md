@@ -25,5 +25,5 @@
 - "Which app versions have the highest crash rate over the last 28 days?"
 - "Summarize this week's 1–2 star reviews and group them by theme."
 
-## Retention (future Firebase module)
+## Retention (needs Google Analytics 4 / Firebase or Adjust)
 - "Compare D1 and D7 retention by acquisition country."

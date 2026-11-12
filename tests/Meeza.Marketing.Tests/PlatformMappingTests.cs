@@ -225,8 +225,21 @@ public class PlayReportsTests
 
 public class ReadOnlyGuaranteeTests
 {
+    private static readonly Type[] ToolTypes =
+    [
+        typeof(UnifiedReportingTools), typeof(DashboardTools), typeof(BenchmarkTools), typeof(InsightTools), typeof(GrowthTools),
+        typeof(Meeza.Marketing.Analytics.AnalyticsTools), typeof(Meeza.Marketing.Adjust.AdjustTools), typeof(MetaAdsTools), typeof(GoogleAdsTools),
+        typeof(PlayConsoleTools), typeof(ProjectTools),
+    ];
+
+    /// <summary>
+    /// The one tool that is not marked read-only (sync_project_data). It reads from the platforms and writes only to the
+    /// local database, so it changes local state but never an ad account.
+    /// </summary>
+    private const string LocalSyncTool = "ProjectTools.SyncNow";
+
     public static IEnumerable<object[]> ToolMethods() =>
-        new[] { typeof(UnifiedReportingTools), typeof(DashboardTools), typeof(BenchmarkTools), typeof(InsightTools), typeof(GrowthTools), typeof(Meeza.Marketing.Analytics.AnalyticsTools), typeof(Meeza.Marketing.Adjust.AdjustTools), typeof(MetaAdsTools), typeof(GoogleAdsTools), typeof(PlayConsoleTools) }
+        ToolTypes
             .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance))
             .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() is not null)
             .Select(m => new object[] { $"{m.DeclaringType!.Name}.{m.Name}" });
@@ -236,19 +249,35 @@ public class ReadOnlyGuaranteeTests
     public void Every_tool_is_annotated_read_only(string method)
     {
         var parts = method.Split('.');
-        var type = new[] { typeof(UnifiedReportingTools), typeof(DashboardTools), typeof(BenchmarkTools), typeof(InsightTools), typeof(GrowthTools), typeof(Meeza.Marketing.Analytics.AnalyticsTools), typeof(Meeza.Marketing.Adjust.AdjustTools), typeof(MetaAdsTools), typeof(GoogleAdsTools), typeof(PlayConsoleTools) }.Single(t => t.Name == parts[0]);
+        var type = ToolTypes.Single(t => t.Name == parts[0]);
         var attr = type.GetMethod(parts[1])!.GetCustomAttribute<McpServerToolAttribute>()!;
-        Assert.True(attr.ReadOnly);
         Assert.False(attr.Destructive);
+        if (method == LocalSyncTool)
+        {
+            Assert.False(attr.ReadOnly);
+            Assert.True(attr.Idempotent);
+            return;
+        }
+        Assert.True(attr.ReadOnly);
     }
 
     [Fact]
     public void No_tool_name_suggests_a_write_operation()
     {
         var names = ToolMethods().Select(m => (string)m[0]).ToArray();
-        Assert.Equal(44, names.Length);   // 44 since adjust_list_apps / adjust_get_performance / adjust_get_retention (2026-11-10)
+        Assert.Equal(54, names.Length);   // 44 platform and reporting tools + the 10 project tools
         var writeVerbs = new[] { "Create", "Update", "Delete", "Pause", "Set", "Mutate", "Reply", "Edit" };
         // OpenDashboard only opens a local read-only view.
         Assert.DoesNotContain(names, n => writeVerbs.Any(v => n.Split('.')[1].StartsWith(v)));
+    }
+
+    [Fact]
+    public void Every_tool_class_in_the_product_is_covered_by_these_checks()
+    {
+        // A new [McpServerToolType] class must be added to ToolTypes, or its annotations would go unchecked.
+        var declared = ToolTypes.Select(t => t.Assembly).Distinct()
+            .SelectMany(a => a.GetTypes())
+            .Where(t => t.GetCustomAttribute<McpServerToolTypeAttribute>() is not null);
+        Assert.Equal(ToolTypes.OrderBy(t => t.FullName), declared.OrderBy(t => t.FullName));
     }
 }

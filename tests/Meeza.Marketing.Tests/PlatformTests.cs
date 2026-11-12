@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
 using Meeza.Marketing.Shared.Security;
+using ClaudeGateway = Meeza.MarketingMcp.Ai.ClaudeGateway;
 using Meeza.MarketingMcp.Configuration;
 using Meeza.MarketingMcp.Dashboard;
 using Meeza.MarketingMcp.Intelligence;
@@ -982,8 +983,9 @@ public class PlatformApiTests : IAsyncLifetime
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
         services.AddLogging();
         services.AddMeezaMarketing();
-        // Isolated, empty credential store: tests never touch real accounts.
+        // Isolated, empty credential store and no local Claude app: tests never touch real accounts.
         services.AddSingleton(new LocalSecretStore(Path.Combine(Path.GetTempPath(), $"meeza-secrets-{Guid.NewGuid():N}.json")));
+        services.AddSingleton(Meeza.MarketingMcp.Ai.LocalClaudeLocator.None);
         _sp = services.BuildServiceProvider();
         _server = _sp.GetRequiredService<DashboardServer>();
         Assert.True(await _server.StartAsync(default));
@@ -1180,7 +1182,21 @@ public class ClaudeGatewayTests
         Assert.Contains("claude-opus-5-5", json);
         Assert.Matches(@"""fallbacks""\s*:\s*""default""", json);
         Assert.Contains("server-side-fallback-2026-07-01", string.Join(",", p.Betas!.Select(b => b.ToString())));
-        Assert.False(new Meeza.MarketingMcp.Ai.ClaudeGateway(new Settings([])).IsConfigured);
+        Assert.False(new Meeza.MarketingMcp.Ai.ClaudeGateway(new Settings([]), Meeza.MarketingMcp.Ai.LocalClaudeLocator.None).IsConfigured);
+    }
+
+    [Fact]
+    public void The_engine_is_the_api_key_first_then_the_local_claude_app()
+    {
+        var app = new Meeza.MarketingMcp.Ai.LocalClaudeLocator(() => @"C:ake\claude.exe");
+        var none = Meeza.MarketingMcp.Ai.LocalClaudeLocator.None;
+        Dictionary<string, string?> key = new() { [SettingKeys.AnthropicApiKey] = "sk-ant-test" };
+        Assert.Equal("claude_code", new ClaudeGateway(new Settings([]), app).Engine);              // no key: the Claude app
+        Assert.Equal("api", new ClaudeGateway(new Settings(key), app).Engine);                    // a key wins when automatic
+        Assert.Equal("claude_code", new ClaudeGateway(new Settings(new(key) { [SettingKeys.AiEngine] = "claude_code" }), app).Engine);
+        Assert.Null(new ClaudeGateway(new Settings(new() { [SettingKeys.AiEngine] = "claude_code" }), none).Engine); // chosen but not installed
+        Assert.Null(new ClaudeGateway(new Settings(new() { [SettingKeys.AiEngine] = "api" }), app).Engine);          // chosen but no key
+        Assert.False(new ClaudeGateway(new Settings([]), app).HasApiKey); // market research still needs a key
     }
 }
 

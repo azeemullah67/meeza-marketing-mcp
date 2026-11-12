@@ -1,6 +1,6 @@
 # Connecting Claude
 
-Build a self-contained executable first. `dotnet run` isn't recommended: it can print build messages to stdout, which corrupts the MCP stream, and it starts slowly.
+Publish the server first. `dotnet run` isn't recommended: it can print build messages to stdout, which corrupts the MCP stream, and it starts slowly. The published program needs the .NET 9 runtime, which the .NET 9 SDK includes.
 
 ```powershell
 dotnet publish src/Meeza.MarketingMcp -c Release -o publish

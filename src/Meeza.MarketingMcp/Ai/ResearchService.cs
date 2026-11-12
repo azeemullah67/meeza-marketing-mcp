@@ -52,12 +52,12 @@ public sealed class ResearchService(ClaudeGateway claude, ProjectStore projects,
         - Be concise. Use tables where they help comparison.
         """;
 
-    public bool IsConfigured => claude.IsConfigured;
+    public bool IsConfigured => claude.HasApiKey;
 
     public ResearchReport Start(string projectId, string topic, string? question)
     {
         var p = projects.Require(projectId);
-        if (!claude.IsConfigured) throw new InvalidOperationException(ClaudeGateway.Hint);
+        if (!claude.HasApiKey) throw new InvalidOperationException(ClaudeGateway.ApiKeyHint);
         if (!Topics.TryGetValue(topic, out var brief)) throw new ArgumentException($"Unknown topic '{topic}'. Use: {string.Join(", ", Topics.Keys)}.");
         question = (question ?? "").Trim();
         if (topic == "custom" && question.Length == 0) throw new ArgumentException("Enter a research question.");

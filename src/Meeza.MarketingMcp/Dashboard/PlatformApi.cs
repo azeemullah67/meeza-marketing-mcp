@@ -34,13 +34,15 @@ public static class PlatformApi
         var research = sp.GetRequiredService<ResearchService>();
         var tasks = sp.GetRequiredService<TaskStore>();
         var check = sp.GetRequiredService<ProblemCheck>();
+        // In demo mode nothing is configured, so a sync could only record failures against the invented project.
+        var demo = sp.GetRequiredService<DemoMode>();
 
         var g = "/api/v2";
 
         app.MapGet(g + "/projects", () =>
         {
             var open = tasks.ActiveCounts();
-            return Ok(new { projects = projects.List(includeArchived: true).Select(p => Summary(p, engine, open.GetValueOrDefault(p.Id))), aiConfigured = analyst.IsConfigured });
+            return Ok(new { projects = projects.List(includeArchived: true).Select(p => Summary(p, engine, open.GetValueOrDefault(p.Id))), aiConfigured = analyst.IsConfigured, demo = demo.Enabled });
         });
         app.MapPost(g + "/projects", (HttpRequest req) => Handle(async () =>
         {
@@ -48,7 +50,7 @@ public static class PlatformApi
             var input = body.ToProject();
             EnsureAllowed(sp, input.Connections);
             var created = projects.Create(input);
-            if (body.SyncNow != false && created.Connections.Count > 0) _ = sync.StartProjectSync(created.Id, "project_created");
+            if (!demo.Enabled && body.SyncNow != false && created.Connections.Count > 0) _ = sync.StartProjectSync(created.Id, "project_created");
             return created;
         }));
         app.MapGet(g + "/projects/{id}", (string id) => Handle(() => Task.FromResult<object>(new { project = projects.Require(id), status = engine.Status(projects.Require(id)) })));
@@ -68,7 +70,7 @@ public static class PlatformApi
             var conns = body.Select(c => c.ToConnection()).ToArray();
             EnsureAllowed(sp, conns);
             var p = projects.SetConnections(id, conns);
-            _ = sync.StartProjectSync(id, "connections_changed");
+            if (!demo.Enabled) _ = sync.StartProjectSync(id, "connections_changed");
             return p;
         }));
 
@@ -102,6 +104,7 @@ public static class PlatformApi
         app.MapPost(g + "/projects/{id}/sync", (string id, HttpRequest req) => Handle(async () =>
         {
             projects.Require(id);
+            demo.RequireLive();
             var body = await Body<SyncRequest>(req);
             if (body.Integration is not null && !Integrations.Synced.Contains(body.Integration)) throw new ArgumentException("Unknown integration.");
             var already = sync.IsRunning(id);
@@ -155,7 +158,7 @@ public static class PlatformApi
             var body = await Body<AskRequest>(req);
             return await analyst.AskAsync(id, body.ConversationId, body.Question ?? "", ct);
         }));
-        app.MapGet(g + "/projects/{id}/analyst", (string id) => Handle(() => Task.FromResult<object>(new { configured = analyst.IsConfigured, conversations = analyst.Conversations(projects.Require(id).Id) })));
+        app.MapGet(g + "/projects/{id}/analyst", (string id) => Handle(() => Task.FromResult<object>(new { configured = analyst.IsConfigured, engine = analyst.Engine, conversations = analyst.Conversations(projects.Require(id).Id) })));
         app.MapGet(g + "/projects/{id}/analyst/{cid}", (string id, string cid) => Handle(() => Task.FromResult<object>(new { messages = analyst.History(projects.Require(id).Id, cid) })));
         app.MapGet(g + "/projects/{id}/research", (string id) => Handle(() => Task.FromResult<object>(new
         {
@@ -242,6 +245,19 @@ public static class PlatformApi
         catch (KeyNotFoundException ex)
         {
             return Error(ex.Message, 404);
+        }
+        catch (AccountAccessDeniedException ex)
+        {
+            // An account outside the allow-list: refused with the reason, never an unhandled server fault.
+            return Error(Redactor.Redact(ex.Message), 403);
+        }
+        catch (PlatformNotConfiguredException ex)
+        {
+            return Error(Redactor.Redact(ex.Message), 400);
+        }
+        catch (PlatformApiException ex)
+        {
+            return Error(Redactor.Redact(ex.Message), 502);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or JsonException or FormatException)
         {
@@ -335,6 +351,8 @@ public static class PlatformApi
         public string? Objectives { get; set; }
         public string? TutorialEvent { get; set; }
         public string? TutorialStartEvent { get; set; }
+        public string? FirstOpenEvent { get; set; }
+        public string? AppRemoveEvent { get; set; }
         public string? PurchaseEvent { get; set; }
         /// <summary>Null = keep the saved journey (on update); an empty list clears it.</summary>
         public List<NuxStepInput>? NuxEvents { get; set; }
@@ -348,7 +366,8 @@ public static class PlatformApi
         {
             Name = Name ?? "", Genre = Genre, Platforms = Platforms, AndroidStoreUrl = AndroidStoreUrl, IosStoreUrl = IosStoreUrl,
             TargetCountries = TargetCountries, Monetization = Monetization, Currency = Currency, TimeZone = TimeZone, LaunchStage = LaunchStage,
-            Objectives = Objectives, TutorialEvent = TutorialEvent, TutorialStartEvent = TutorialStartEvent, PurchaseEvent = PurchaseEvent, BackfillDays = BackfillDays ?? 90,
+            Objectives = Objectives, TutorialEvent = TutorialEvent, TutorialStartEvent = TutorialStartEvent,
+            FirstOpenEvent = FirstOpenEvent, AppRemoveEvent = AppRemoveEvent, PurchaseEvent = PurchaseEvent, BackfillDays = BackfillDays ?? 90,
             NuxEvents = NuxEvents?.Select(s => new NuxStep(s.Event ?? "", s.Label)).ToList(),
             SyncIntervalMinutes = SyncIntervalMinutes ?? 60, Archived = Archived ?? false,
             Connections = Connections?.Select(c => c.ToConnection()).ToList() ?? [],

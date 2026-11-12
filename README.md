@@ -4,15 +4,76 @@ A read-only [Model Context Protocol](https://modelcontextprotocol.io) server tha
 
 The server isn't tied to any game, company or ad account. Each user runs it on their own machine with their own credentials.
 
-> **Live dashboard included.** When Claude connects, a private local dashboard starts at `http://127.0.0.1:5057`. It shows spend, installs and CPI **by ad**, ad set or campaign, plus daily trends, countries and Google Play health. Ask Claude to *"open the marketing dashboard"*, or run `meeza-marketing-mcp dashboard`. Try it with sample data: `meeza-marketing-mcp dashboard --demo`. See [docs/dashboard.md](docs/dashboard.md).
->
-> ![Overview page of the Meeza Growth dashboard, showing a synthetic demo project](docs/images/dashboard-overview.png)
->
-> *Overview page with invented demo data: plan verdict, top actions, KPI tiles against targets, prioritised marketing plan and findings. See [docs/dashboard.md](docs/dashboard.md) for the retention and cohort views.*
+- **Read-only on your ad accounts.** The server can't create, edit, pause or delete campaigns, and it never posts review replies. See [Security](#security).
+- **Local dashboard.** When Claude connects, a private local dashboard starts at `http://127.0.0.1:5057`. Ask Claude to *"open the marketing dashboard"*, or run `meeza-marketing-mcp dashboard`. Try it with invented sample data and no accounts: `meeza-marketing-mcp dashboard --demo`. See [Dashboard](#dashboard).
+- **One project per game.** The dashboard is a multi-project app that keeps a synchronized local history for each game. See [docs/platform.md](docs/platform.md).
 
-> **Marketing intelligence platform.** The dashboard is now a multi-project app: create a project per game, link its Google Ads / Meta / GA4 accounts, and it keeps a synchronized local history (backfill + hourly incremental sync with freshness tracking). Pages: executive KPIs with targets, acquisition and attribution reconciliation, D0–D30 cohort retention, campaigns, creative intelligence, funnel, budget forecasting, an AI analyst and cited market research. The previous dashboard remains at `/classic`. See [docs/platform.md](docs/platform.md).
+## What you need
 
-> **Read-only by design.** The server can't create, edit, pause or delete campaigns, and it never posts review replies. Every tool is annotated `readOnlyHint: true`, and a test enforces that.
+- **.NET 9 SDK** or newer. The project targets `net9.0`; see [Changing the target framework](#changing-the-target-framework).
+- **Claude Code or Claude Desktop.**
+- **Credentials for at least one platform you use:** Meta Ads, Google Ads, Google Play Console, Google Analytics 4 / Firebase or Adjust.
+- **Windows, if you want the app to store your credentials.** The encrypted store uses Windows DPAPI. On macOS and Linux it isn't available yet, so you supply credentials as environment variables.
+
+## Quick start
+
+1. **Clone and publish.**
+
+   ```powershell
+   git clone https://github.com/azeemullah67/meeza-marketing-mcp.git
+   cd meeza-marketing-mcp
+   dotnet publish src/Meeza.MarketingMcp -c Release -o publish
+   ```
+
+   The executable is `publish/meeza-marketing-mcp.exe` (on macOS and Linux it's `publish/meeza-marketing-mcp`).
+
+2. **Add credentials for at least one platform.** Each guide explains what to create and which settings to fill in:
+   [Meta Ads](docs/meta-setup.md), [Google Ads](docs/google-ads-setup.md), [Google Play Console](docs/play-console-setup.md), [Google Analytics 4 / Firebase](docs/analytics-setup.md), [Adjust](docs/adjust-setup.md).
+
+   Then store the values in one of two ways.
+
+   **Option A: the dashboard.** Start it, open **Data sources** and fill in the **Credentials** card for the platform. **Save** stores the values and tests the connection.
+
+   ```powershell
+   ./publish/meeza-marketing-mcp dashboard
+   ```
+
+   **Option B: the terminal.**
+
+   ```powershell
+   ./publish/meeza-marketing-mcp secrets set META_ACCESS_TOKEN
+   ./publish/meeza-marketing-mcp secrets list
+   ```
+
+   Both options write to the encrypted store, which is available on Windows only (DPAPI, scoped to the current user). On macOS and Linux, set the same names as environment variables instead. See [Configuration](#configuration).
+
+3. **Check your setup.** This tests each platform connection and lists the accounts it can see.
+
+   ```powershell
+   ./publish/meeza-marketing-mcp check
+   ```
+
+4. **Connect Claude.** For Claude Code, use the full path to the published executable:
+
+   ```powershell
+   claude mcp add meeza-marketing -- "C:\path\to\publish\meeza-marketing-mcp.exe"
+   ```
+
+   For Claude Desktop, follow [docs/claude-setup.md](docs/claude-setup.md). Then ask: *"Which marketing accounts are connected?"*
+
+If something doesn't work, see [docs/troubleshooting.md](docs/troubleshooting.md).
+
+## Dashboard
+
+![Overview page of the Meeza Marketing MCP dashboard, showing a synthetic demo project](docs/images/dashboard-overview.png)
+
+*Overview page with invented demo data: plan verdict, top actions, KPI tiles against targets, prioritised marketing plan and findings. See [docs/dashboard.md](docs/dashboard.md) for the retention and cohort views.*
+
+Create a project per game and link its Google Ads / Meta / GA4 accounts. The dashboard then keeps a synchronized local history (backfill + hourly incremental sync with freshness tracking).
+
+Pages: executive KPIs with targets, acquisition and attribution reconciliation, D0–D30 cohort retention, campaigns, creative intelligence, funnel, budget forecasting, an AI analyst and cited market research. See [docs/platform.md](docs/platform.md).
+
+Demo mode (`dashboard --demo`) shows one invented project on a temporary database. It reads no credentials and contacts no account, and it can't save credentials or start a sync.
 
 ## What you can ask
 
@@ -32,6 +93,11 @@ See [examples/prompts.md](examples/prompts.md) for more.
 
 ## Tools
 
+Every tool returns the same envelope: `{ tool, ok, dateRange, data, errors[], notes[] }`. If one platform fails, the others still return data.
+
+<details>
+<summary>Tool list by area</summary>
+
 | Area | Tools |
 |---|---|
 | Dashboard | `open_dashboard`, `get_ad_performance` (by ad / ad set / campaign across platforms) |
@@ -45,7 +111,7 @@ See [examples/prompts.md](examples/prompts.md) for more.
 | Adjust (MMP) | `adjust_list_apps`, `adjust_get_performance` (installs, cost, CPI, revenue by network / campaign / ad group / creative / country), `adjust_get_retention` (install-cohort retention per network, campaign or creative) ([setup](docs/adjust-setup.md)) |
 | Google Play | `play_get_app_details`, `play_get_reviews`, `play_get_ratings`, `play_get_android_vitals`, `play_get_crash_metrics`, `play_get_anr_metrics`, `play_get_store_installs` |
 
-Every tool returns the same envelope: `{ tool, ok, dateRange, data, errors[], notes[] }`. If one platform fails, the others still return data.
+</details>
 
 ### Data rules
 
@@ -55,50 +121,6 @@ Every tool returns the same envelope: `{ tool, ok, dateRange, data, errors[], no
 - **Adjust cost is never added to ad-platform spend.** It is the same money seen through Adjust, and is the only amount converted (by Adjust, into `ADJUST_CURRENCY`).
 - **Time zones.** Each platform reports in its own account time zone. Play vitals use America/Los_Angeles.
 
-## Quick start
-
-Requirements: .NET 9 SDK or newer (the project targets `net9.0`; see [Changing the target framework](#changing-the-target-framework)).
-
-```powershell
-git clone https://github.com/<your-org>/meeza-marketing-mcp.git
-cd meeza-marketing-mcp
-dotnet test
-dotnet publish src/Meeza.MarketingMcp -c Release -o publish
-```
-
-1. **Configure at least one platform**:
-   - [Meta Ads](docs/meta-setup.md)
-   - [Google Ads](docs/google-ads-setup.md)
-   - [Google Play Console](docs/play-console-setup.md)
-
-   Easiest: open the dashboard (`meeza-marketing-mcp dashboard`) and click **⚙ Settings**. Each connection has numbered steps with links, fields to paste into, **Save**, **Test connection** and, for Google Ads, **Sign in with Google**.
-
-2. **Or store your secrets from the terminal.** On Windows the store uses DPAPI, scoped to the current user:
-
-   ```powershell
-   ./publish/meeza-marketing-mcp secrets set META_ACCESS_TOKEN
-   ./publish/meeza-marketing-mcp secrets list
-   ```
-
-3. **Check your setup**:
-
-   ```powershell
-   ./publish/meeza-marketing-mcp check
-   ```
-
-4. **Connect Claude**: follow [docs/claude-setup.md](docs/claude-setup.md).
-
-   Claude Code:
-
-   ```powershell
-   claude mcp add meeza-marketing -- "C:\path\to\publish\meeza-marketing-mcp.exe"
-   ```
-
-5. **Optional: install the skill.** [`skills/meeza-marketing/SKILL.md`](skills/meeza-marketing/SKILL.md) tells the
-   agent when to reach for which tool, how to read attribution and retention correctly, and how to answer a
-   marketer. For Claude Code copy the folder to `.claude/skills/meeza-marketing/` (project) or
-   `~/.claude/skills/meeza-marketing/` (user); other agents that read `SKILL.md` files work the same way.
-
 ## Configuration
 
 Settings are resolved in this order:
@@ -106,6 +128,9 @@ Settings are resolved in this order:
 1. Environment variables
 2. The encrypted secret store (`secrets set`)
 3. `appsettings.json` (`Settings` section). This step only applies to **non-secret** settings: secrets are ignored if they appear in `appsettings.json`.
+
+<details>
+<summary>Settings reference</summary>
 
 | Setting | Secret | Purpose |
 |---|---|---|
@@ -130,19 +155,43 @@ Settings are resolved in this order:
 | `MEEZA_DASHBOARD` | | `off` stops the dashboard from starting with the MCP server |
 | `MEEZA_DASHBOARD_PORT` | | Dashboard port (default `5057`) |
 
+</details>
+
 On macOS and Linux the encrypted store isn't available yet. Supply secrets as environment variables there, for example from your OS keychain or a secrets manager. The server refuses to write secrets to disk unencrypted.
 
 ## Security
 
+### Read-only
+
+- Only read endpoints are implemented against Meta, Google and Play. There's no mutate, edit or reply code path.
+- Every tool except `sync_project_data` is marked read-only (`readOnlyHint: true`), and a test checks those annotations. `sync_project_data` isn't marked read-only because it refreshes the local copy of a project's data: it reads from the platforms and writes only to the local database.
+
+### Credentials
+
 - Secrets never come from `appsettings.json`.
 - Secrets are never written into URLs. Meta and Google tokens travel in the `Authorization` header.
-- All error text passes through a redactor that strips tokens, `client_secret` values and private keys.
-- Logs go to stderr, and HTTP request URLs aren't logged.
 - Each platform has its own `HttpClient` and its own credentials.
 - Optional allow-lists restrict which ad accounts and apps can be queried. Account access is validated before every request.
+
+### Logs and errors
+
+- All error text passes through a redactor that strips tokens, `client_secret` values and private keys.
+- Logs go to stderr. HTTP client request logging is turned off; a retry warning logs the request URL without its query string.
 - Throttling is handled: 429 and 5xx responses are retried with exponential backoff and `Retry-After`, and Meta rate-limit error codes are recognised.
-- Only read endpoints are implemented against Meta, Google and Play. There's no mutate, edit or reply code path.
-- The dashboard's only write action is saving your own connection settings to the encrypted local store. It needs a POST to `/api/settings`, a same-origin `Origin` header, a JSON body (128 KB max), a per-process anti-forgery token and the access-key cookie. Secret values are never sent back to the browser.
+
+### Dashboard writes
+
+- The dashboard accepts writes (connection settings, projects, KPI targets, task status, sync and AI requests) only as a POST to `/api/settings` or `/api/v2` with a same-origin `Origin` header, a JSON body (128 KB max), a per-process anti-forgery token and the access-key cookie.
+- Connection settings are saved to the encrypted local store. Secret values are never sent back to the browser.
+- A project can only link accounts inside the configured allow-lists; anything else is refused when it is saved and again before it is synced.
+
+### AI features
+
+- The AI analyst and market research are optional and off by default. The analyst runs either through the Claude Code app installed on this computer, signed in with your own Claude account (no API key), or with your own Anthropic API key, set in the dashboard or as `ANTHROPIC_API_KEY`. Market research always needs the API key. When you use them, they send that project's synced advertising and analytics data, the project profile and your question to Claude, and market research uses the API's web search. See [docs/security.md](docs/security.md#ai-features).
+
+## Agent skill (optional)
+
+[`skills/meeza-marketing/SKILL.md`](skills/meeza-marketing/SKILL.md) tells the agent when to reach for which tool, how to read attribution and retention correctly, and how to answer a marketer. For Claude Code copy the folder to `.claude/skills/meeza-marketing/` (project) or `~/.claude/skills/meeza-marketing/` (user); other agents that read `SKILL.md` files work the same way.
 
 ## Repository layout
 
@@ -161,6 +210,14 @@ examples/                      Claude config and example prompts
 
 See [docs/architecture.md](docs/architecture.md) for the design.
 
+## Development
+
+```powershell
+dotnet test
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the ground rules.
+
 ## Changing the target framework
 
 The target framework is set in one place, [Directory.Build.props](Directory.Build.props) (`MeezaTargetFramework`). Once the .NET 10 SDK is installed, set it to `net10.0`.
@@ -169,7 +226,7 @@ The target framework is set in one place, [Directory.Build.props](Directory.Buil
 
 See [docs/roadmap.md](docs/roadmap.md) for the full UA gap analysis (MMP, cohort ROAS, ad revenue, SKAN, more networks, creative analytics). Highlights:
 
-- Firebase Analytics / GA4 module: DAU/MAU, D1/D7/D30 retention, sessions, level progression, ad and IAP revenue.
+- GA4 funnels and events (active users, cohort retention, level progression and revenue are already in).
 - Encrypted secret store for macOS Keychain and Linux libsecret.
 - Hosted multi-tenant version (Streamable HTTP, OAuth account linking, tenant isolation).
 

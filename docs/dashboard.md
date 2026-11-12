@@ -1,6 +1,6 @@
 # Live dashboard
 
-The server includes a local, read-only web dashboard. It uses the same platform connections as the MCP tools.
+The server includes a local web dashboard. It shows the data that has been synchronized for each project, and it is where you add credentials and link accounts. Nothing in it can change an ad account.
 
 ![Overview page (synthetic demo data)](images/dashboard-overview.png)
 
@@ -18,51 +18,45 @@ Both screenshots use an invented "Puzzle Quest" project, not real accounts.
 |---|---|
 | Ask Claude: *"open the marketing dashboard"* | Claude calls `open_dashboard`, which opens your browser and returns the link |
 | `meeza-marketing-mcp dashboard` | Starts the dashboard (or reuses a running one) and opens your browser |
-| `meeza-marketing-mcp dashboard --demo` | Preview with generated sample data. No accounts are contacted. |
+| `meeza-marketing-mcp dashboard --demo` | Shows one invented project so you can look around. See [Demo mode](#demo-mode). |
 | `--no-browser` | Prints the link without opening a browser |
 
 The dashboard starts automatically whenever Claude launches the MCP server. To turn that off, set `MEEZA_DASHBOARD=off` in the server's environment. The default address is `http://127.0.0.1:5057`; change the port with `MEEZA_DASHBOARD_PORT`.
 
-## Settings (connections)
+## Demo mode
 
-Click **⚙ Settings** in the header, or open the link in the connection popover. Each connection (Meta Ads, Google Ads, Google Play Console) has a card with:
+`meeza-marketing-mcp dashboard --demo` shows one invented project, "Puzzle Quest (demo)", with about 60 days of sample data. The header shows a **Demo data** label on every page.
 
-- **Setup steps:** numbered instructions with links to the exact console pages.
-- **Fields:** paste tokens and IDs. Secrets are password fields; once saved they show **✓ saved** and are never displayed or sent back to the browser. For Google Play, choose the downloaded JSON key file; it's read locally and stored encrypted. The service account email to invite in Play Console is then shown.
+- The project lives in a temporary database that is deleted when the dashboard stops. Your own projects are not shown and not touched.
+- No credentials are read: environment variables, the secret store and `appsettings.json` are all ignored, so no account can be contacted.
+- Saving credentials and **Sync now** are turned off.
+- If your live dashboard already uses the port, set `MEEZA_DASHBOARD_PORT` to another port for the demo.
+
+## Credentials (Data sources page)
+
+Open **Data sources** in the sidebar. The **Credentials** section has one card per connection: Meta Ads, Google Ads, Google Play Console, Google Analytics 4, Adjust and Claude (for the optional AI analyst and market research). Each card has:
+
+- **Fields:** paste tokens and IDs. Secrets are password fields; once saved they show **saved** and are never displayed or sent back to the browser. For a service account, paste the JSON key; the service account email to invite is then shown on the card.
 - **Save:** validates the input (account IDs, package names, bucket, JSON key), stores it in the encrypted store (`%APPDATA%\MeezaMarketingMcp\secrets.json`, DPAPI), applies it immediately without a restart, and tests the connection.
 - **Test connection:** lists the accounts or apps it can see, or the exact error.
-- **Sign in with Google** (Google Ads): opens Google's consent page and stores the refresh token.
-- **Disconnect:** removes that connection's saved values.
 
-Values set as environment variables take priority and are shown as locked. In demo mode, **Show my live data** switches the dashboard to your real accounts.
+Values set as environment variables take priority and are shown as locked. The encrypted store is available on Windows only; on macOS and Linux the page says so, and you set the values as environment variables instead. For Google Ads with a user sign-in instead of a service account, run `meeza-marketing-mcp auth google-ads` in a terminal.
+
+Credentials are shared by all projects. Each project picks its own accounts in **Project settings**. The same page shows the sync status of the selected project and has a **Sync now** button.
 
 ## What it shows
 
-- **Status:** one connection indicator (click it for each platform's state), the time of the last refresh, and the period being compared ("Oct 28 – Nov 3 vs Oct 21 – 27"). Auto-refresh can be off, or every 1, 5 or 15 minutes.
-- **Section bar:** jump to Overview, Performance, Benchmarks, Countries or Google Play. The current section is highlighted.
-- **Top strip.** It has three cards:
-  - **Growth health:** a 0–100 checklist score made of spend efficiency, creative pipeline, install tracking and app quality. Hover any bar to see exactly how it's scored.
-  - **What's going on:** spend, installs, best ad, creative pipeline, top market and app health, each shown as an icon tile.
-  - **Improve next:** a ranked action list. Examples: FIX vitals or rating, CUT losing ads (with the money it saves), CHECK a CPI jump, SCALE the best ad, REFRESH tired creatives, TEST new formats (playable, creator/UGC) and TRACK installs. Each action jumps to the rows behind it.
-- **Creative testing lab:** the test-and-scale loop large studios run, as a board with the columns Testing → Scale → Steady → Refresh → Cut.
-  - **Each ad card:** a format icon (▶ video, ◆ playable, ☺ creator/UGC, ▣ static), CPI, spend, an IPM bar and Meta frequency.
-  - **The spend bar** shows how much budget sits in each stage.
-  - **"How ads are sorted"** lists the rules: each ad is compared with its own platform's median CPI; winners are at or below 0.8× it, losers at or above 1.5×, and refresh means a frequency of 3.5 or more.
-- **Filters:** date range (yesterday, 7/14/30/90 days, this month, last month, custom), platform, and currency.
-- **KPI tiles:** spend, installs, CPI and IPM first, then CTR, CPC, CPM, impressions and clicks. Each shows the change against the previous period of the same length. Green means better and red means worse, so a rising CPI is red. Hover a change to see the previous value. Installs, CPI and IPM are shown per platform only. They are never added together, because Meta and Google Ads attribute installs independently and can both claim the same install.
-- **Daily charts:** spend per day and attributed installs per day for each platform, with hover tooltips and a table view.
-- **Performance by ad:** every ad across Meta and Google Ads, which you can switch to ad sets / ad groups or campaigns. Columns: status, spend, share of spend, impressions, clicks, CTR, CPC, CPM, installs and CPI. Active rows show their status as plain text, so paused rows and problems stand out. A CPI over 2× the median is marked in red, and the lowest-CPI row with 10+ installs gets a "Best CPI" tag. Rows are sortable and searchable, can be filtered by status, and have a **Spending without installs** filter. Export to CSV is available.
-- **How you compare with the industry:** your CPI, CPM, CPC, CTR, IPM and click-to-install rate per platform against published mobile-game benchmarks (Adjust, Liftoff, AppsFlyer, Sensor Tower, GameAnalytics, Google, AppTweak), filtered by genre and OS. Tabs show CPI by country against regional benchmarks; retention, ROAS, store-quality and channel-mix benchmarks; a playbook of documented practices from large studios (Supercell, Dream Games, Scopely, Habby, King); and the full source list. Every figure links to its source and period. Countries without a verified public benchmark (for example Pakistan, the Philippines and India) show none rather than a guess. Benchmarks are USD, so money metrics are compared only when the selected currency is USD. The data is a dated snapshot in `src/Meeza.MarketingMcp/Benchmarks/benchmarks.json`; update that file to refresh it.
-- **Countries:** spend, CTR, installs and CPI per platform, grouped by country.
-- **Google Play:** user-perceived crash and ANR rates against Google's bad-behaviour thresholds (with daily sparklines), store installs from the Play Console exports, and recent reviews with their star distribution.
+The sidebar has these pages: Overview, Tasks, Campaigns, Creatives, Countries & attribution, Funnel, Retention & cohorts, Budget & forecast, KPI targets, AI analyst, Market research, Data sources and Project settings. [platform.md](platform.md) describes what each page computes and the rules behind the numbers.
 
-Totals are always for a single currency. If your accounts use several currencies, choose one with the currency selector.
+The header has the date range (7, 14, 30 or 90 days, month to date, or custom), filters (country, ad platform, campaign, GA4 channel), a freshness indicator for the selected project and **Sync now**.
+
+Totals are always for a single currency.
 
 ## How fresh is the data?
 
-- Each view is cached for **3 minutes** to stay within API rate limits. **Refresh** always fetches fresh data.
+- Every page is computed from the local store, not from live API calls. A background scheduler checks every 5 minutes and syncs each project at its own interval (60 minutes by default). **Sync now** starts a sync immediately.
+- The header and every KPI card show how fresh each source is.
 - Today's numbers are incomplete on every platform.
-- Android vitals lag by 1–2 days, and Play Console export reports lag by a few days.
 
 ## Security
 
@@ -71,5 +65,6 @@ Totals are always for a single currency. If your accounts use several currencies
 - The key is kept in `%APPDATA%\MeezaMarketingMcp\dashboard.key` (on macOS/Linux, `~/.config/MeezaMarketingMcp/dashboard.key`), readable by your user only. Run `meeza-marketing-mcp dashboard rotate-key` (or delete that file) to revoke every existing link and browser session; running instances notice on their next request, no restart needed.
 - When the dashboard port is already taken, the CLI and the `open_dashboard` tool first check that the listener really is your Meeza dashboard (a challenge only the running instance can answer). Another program on that port gets no link; the message tells you to set `MEEZA_DASHBOARD_PORT`. See [security.md](security.md).
 - Requests with a foreign `Host` header are rejected, which blocks DNS-rebinding attacks.
-- Only `GET` requests are accepted. A strict Content-Security-Policy blocks external scripts, and the page loads no third-party code.
-- Ad names and review text are HTML-escaped before display. CSV export neutralises spreadsheet formulas.
+- Changes are accepted only as a `POST` to `/api/settings` or `/api/v2` with a same-origin `Origin` header, a JSON body and a per-process anti-forgery token. They change local configuration (credentials, projects, targets, task status) or start a sync or an AI request. Every other method is rejected.
+- A Content-Security-Policy blocks external scripts, frames and form posts, and the page loads no third-party code. Images may load over `https` (creative thumbnails).
+- Ad names, creative text and AI output are HTML-escaped before display, and links and images are limited to `http(s)` URLs.

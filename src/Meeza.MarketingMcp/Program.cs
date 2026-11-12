@@ -37,6 +37,7 @@ if (CliCommands.IsCommand(args))
     cliBuilder.Configuration.AddMeezaConfiguration();
     cliBuilder.Logging.ClearProviders();
     cliBuilder.Services.AddMeezaMarketing();
+    if (CliCommands.IsDemo(args)) cliBuilder.Services.AddMeezaDemo(); // invented data only: no credentials, no real projects
     using var cliHost = cliBuilder.Build();
     return await CliCommands.RunAsync(args, cliHost.Services);
 }
@@ -55,7 +56,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<Meeza.MarketingMcp
 builder.Services
     .AddMcpServer(o =>
     {
-        o.ServerInfo = new() { Name = "meeza-marketing", Version = "1.0.0" };
+        o.ServerInfo = new() { Name = "meeza-marketing", Version = Meeza.MarketingMcp.AppVersion.Current };
         o.ServerInstructions = ServerInstructions;
     })
     .WithStdioServerTransport()

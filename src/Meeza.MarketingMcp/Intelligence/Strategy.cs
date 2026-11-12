@@ -46,7 +46,7 @@ public sealed partial class AnalyticsEngine
         var (d1, d7) = (curve[1], curve[7]);
         var events = data.Ga4Events(projectId, f.Start, f.End).GroupBy(e => e.EventName).ToDictionary(g => g.Key, g => g.Sum(x => x.Users ?? 0));
         var tutorialEvent = p.TutorialEvent ?? "tutorial_complete";
-        var opens = events.GetValueOrDefault("first_open"); var done = events.GetValueOrDefault(tutorialEvent);
+        var opens = events.GetValueOrDefault(p.FirstOpen); var done = events.GetValueOrDefault(tutorialEvent);
         decimal? tutorialRate = opens > 0 && events.ContainsKey(tutorialEvent) ? Math.Round(done * 100m / opens, 1) : null;
         var org = OrganicVsPaidNumbers(projectId, f);
         var newUsers = org.Paid + org.Organic + org.Unattributed;
@@ -85,7 +85,7 @@ public sealed partial class AnalyticsEngine
 
         health.Add(new("tutorial", "Tutorial completion", tutorialRate is null ? "n/a" : $"{tutorialRate}%",
             null, null, tutorialRate is null ? "unknown" : "info",
-            tutorialRate is null ? $"No '{tutorialEvent}' or first_open events in GA4 for this period." : $"{done:N0} of {opens:N0} new players. No published benchmark is used; compare against your own previous versions."));
+            tutorialRate is null ? $"No '{tutorialEvent}' or {p.FirstOpen} events in GA4 for this period." : $"{done:N0} of {opens:N0} new players. No published benchmark is used; compare against your own previous versions."));
 
         var cpiTarget = TargetFor(targets, "cpi", f)?.Target;
         var cpiChange = Stats.PctChange(cur.Cpi, prev.Cpi);

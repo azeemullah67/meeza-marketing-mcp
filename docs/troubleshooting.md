@@ -52,10 +52,10 @@ meeza-marketing-mcp secrets list
 |---|---|
 | "Dashboard link required" | Open the link from Claude (`open_dashboard`) or from `meeza-marketing-mcp dashboard`; it contains your access key. |
 | Port 5057 already in use | Another instance is probably serving it, so its link works. Otherwise set `MEEZA_DASHBOARD_PORT`. |
-| Numbers do not change | Views are cached for 3 minutes. Click **Refresh**. |
+| Numbers do not change | The pages show synchronized data. Click **Sync now**, or wait for the next automatic sync. The header shows how fresh each source is. |
 | Old links stopped working | The key was rotated (`dashboard rotate-key`) or `dashboard.key` was deleted. Get a new link with `meeza-marketing-mcp dashboard` or the `open_dashboard` tool. |
 | "Port 5057 is in use by a program that is not this user's Meeza dashboard" | Something else listens on the port, or a Meeza instance from another Windows user. No link is issued on purpose. Close that program or set `MEEZA_DASHBOARD_PORT` to a free port. |
 
 ## Logs
 
-The server logs to **stderr** at Information level. Tokens are never logged, request URLs aren't logged, and all error messages pass through the redactor before reaching logs or Claude.
+The server logs to **stderr** at Information level. Tokens are never logged. HTTP client request logging is turned off; a retry warning logs the request URL without its query string. Error messages from the platforms pass through the redactor before reaching logs or Claude.

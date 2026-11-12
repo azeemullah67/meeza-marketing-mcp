@@ -42,6 +42,8 @@ public static class SettingKeys
     // Claude (AI analyst and market research)
     public const string AnthropicApiKey = "ANTHROPIC_API_KEY";
     public const string AiModel = "MEEZA_AI_MODEL";
+    /// <summary>"api", "claude_code" (the Claude app on this computer), or empty for automatic.</summary>
+    public const string AiEngine = "MEEZA_AI_ENGINE";
 
     public static readonly IReadOnlySet<string> Secrets = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -58,7 +60,7 @@ public static class SettingKeys
         PlayServiceAccountJson, PlayServiceAccountKeyPath, PlayPackageNames, PlayReportsBucket,
         Ga4ServiceAccountJson, Ga4PropertyIds,
         AdjustApiToken, AdjustAppTokens, AdjustCurrency,
-        AnthropicApiKey, AiModel,
+        AnthropicApiKey, AiModel, AiEngine,
     ];
 
     public static bool IsSecret(string key) => Secrets.Contains(key);

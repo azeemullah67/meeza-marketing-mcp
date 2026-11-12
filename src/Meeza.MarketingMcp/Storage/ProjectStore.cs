@@ -37,6 +37,16 @@ public sealed record Project
     /// <summary>The tutorial start event to read: the configured one, else the standard GA4 name.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public string TutorialStart => TutorialStartEvent ?? "tutorial_begin";
+    /// <summary>GA4 event that marks a player's first open of the game. Null = first_open.</summary>
+    public string? FirstOpenEvent { get; init; }
+    /// <summary>The first open event to read: the configured one, else the standard GA4 name.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string FirstOpen => FirstOpenEvent ?? "first_open";
+    /// <summary>GA4 event that marks the game being uninstalled (Android only). Null = app_remove.</summary>
+    public string? AppRemoveEvent { get; init; }
+    /// <summary>The uninstall event to read: the configured one, else the standard GA4 name.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string AppRemove => AppRemoveEvent ?? "app_remove";
     /// <summary>GA4 event that marks a purchase. Default in_app_purchase.</summary>
     public string? PurchaseEvent { get; init; }
     /// <summary>
@@ -113,9 +123,9 @@ public sealed class ProjectStore(MarketingDb db)
         var now = Db.Now();
         c.Exec("""
             INSERT INTO projects(id, name, genre, platforms, android_store_url, ios_store_url, target_countries, monetization, currency, timezone,
-                                 launch_stage, objectives, tutorial_event, tutorial_start_event, purchase_event, nux_events, backfill_days, sync_interval_minutes, created_at, updated_at, archived)
+                                 launch_stage, objectives, tutorial_event, tutorial_start_event, first_open_event, app_remove_event, purchase_event, nux_events, backfill_days, sync_interval_minutes, created_at, updated_at, archived)
             VALUES(@id, @Name, @Genre, @Platforms, @AndroidStoreUrl, @IosStoreUrl, @TargetCountries, @Monetization, @Currency, @TimeZone,
-                   @LaunchStage, @Objectives, @TutorialEvent, @TutorialStartEvent, @PurchaseEvent, @NuxEvents, @BackfillDays, @SyncIntervalMinutes, @now, @now, 0)
+                   @LaunchStage, @Objectives, @TutorialEvent, @TutorialStartEvent, @FirstOpenEvent, @AppRemoveEvent, @PurchaseEvent, @NuxEvents, @BackfillDays, @SyncIntervalMinutes, @now, @now, 0)
             """, Params(p, new() { ["id"] = id, ["now"] = now }), tx);
         foreach (var conn in p.Connections) AddConnection(c, tx, id, conn);
         tx.Commit();
@@ -130,7 +140,7 @@ public sealed class ProjectStore(MarketingDb db)
         c.Exec("""
             UPDATE projects SET name=@Name, genre=@Genre, platforms=@Platforms, android_store_url=@AndroidStoreUrl, ios_store_url=@IosStoreUrl,
                 target_countries=@TargetCountries, monetization=@Monetization, currency=@Currency, timezone=@TimeZone, launch_stage=@LaunchStage,
-                objectives=@Objectives, tutorial_event=@TutorialEvent, tutorial_start_event=@TutorialStartEvent, purchase_event=@PurchaseEvent, nux_events=@NuxEvents, backfill_days=@BackfillDays,
+                objectives=@Objectives, tutorial_event=@TutorialEvent, tutorial_start_event=@TutorialStartEvent, first_open_event=@FirstOpenEvent, app_remove_event=@AppRemoveEvent, purchase_event=@PurchaseEvent, nux_events=@NuxEvents, backfill_days=@BackfillDays,
                 sync_interval_minutes=@SyncIntervalMinutes, archived=@Archived, updated_at=@now
             WHERE id=@id
             """, Params(p, new() { ["id"] = id, ["now"] = Db.Now(), ["Archived"] = p.Archived ? 1 : 0 }));
@@ -265,7 +275,8 @@ public sealed class ProjectStore(MarketingDb db)
             AndroidStoreUrl = Url(p.AndroidStoreUrl), IosStoreUrl = Url(p.IosStoreUrl),
             TargetCountries = countries.Length == 0 ? null : string.Join(",", countries.Distinct()),
             Monetization = Clean(p.Monetization, 60), Currency = currency, TimeZone = tz, LaunchStage = Clean(p.LaunchStage, 40),
-            Objectives = Clean(p.Objectives, 2000), TutorialEvent = Event(p.TutorialEvent), TutorialStartEvent = Event(p.TutorialStartEvent), PurchaseEvent = Event(p.PurchaseEvent),
+            Objectives = Clean(p.Objectives, 2000), TutorialEvent = Event(p.TutorialEvent), TutorialStartEvent = Event(p.TutorialStartEvent),
+            FirstOpenEvent = Event(p.FirstOpenEvent), AppRemoveEvent = Event(p.AppRemoveEvent), PurchaseEvent = Event(p.PurchaseEvent),
             NuxEvents = Nux(p.NuxEvents),
             BackfillDays = Math.Clamp(p.BackfillDays == 0 ? 90 : p.BackfillDays, MinBackfillDays, MaxBackfillDays),
             SyncIntervalMinutes = Math.Clamp(p.SyncIntervalMinutes == 0 ? 60 : p.SyncIntervalMinutes, 15, 1440),
@@ -278,7 +289,8 @@ public sealed class ProjectStore(MarketingDb db)
         {
             ["Name"] = p.Name, ["Genre"] = p.Genre, ["Platforms"] = p.Platforms, ["AndroidStoreUrl"] = p.AndroidStoreUrl, ["IosStoreUrl"] = p.IosStoreUrl,
             ["TargetCountries"] = p.TargetCountries, ["Monetization"] = p.Monetization, ["Currency"] = p.Currency, ["TimeZone"] = p.TimeZone,
-            ["LaunchStage"] = p.LaunchStage, ["Objectives"] = p.Objectives, ["TutorialEvent"] = p.TutorialEvent, ["TutorialStartEvent"] = p.TutorialStartEvent, ["PurchaseEvent"] = p.PurchaseEvent,
+            ["LaunchStage"] = p.LaunchStage, ["Objectives"] = p.Objectives, ["TutorialEvent"] = p.TutorialEvent, ["TutorialStartEvent"] = p.TutorialStartEvent,
+            ["FirstOpenEvent"] = p.FirstOpenEvent, ["AppRemoveEvent"] = p.AppRemoveEvent, ["PurchaseEvent"] = p.PurchaseEvent,
             ["NuxEvents"] = p.NuxEvents is { Count: > 0 } n ? System.Text.Json.JsonSerializer.Serialize(n.Select(s => new { e = s.Event, l = s.Label })) : null,
             ["BackfillDays"] = p.BackfillDays, ["SyncIntervalMinutes"] = p.SyncIntervalMinutes,
         };
@@ -298,7 +310,8 @@ public sealed class ProjectStore(MarketingDb db)
         Id = r.Str("id")!, Name = r.Str("name")!, Genre = r.Str("genre"), Platforms = r.Str("platforms"),
         AndroidStoreUrl = r.Str("android_store_url"), IosStoreUrl = r.Str("ios_store_url"), TargetCountries = r.Str("target_countries"),
         Monetization = r.Str("monetization"), Currency = r.Str("currency"), TimeZone = r.Str("timezone"), LaunchStage = r.Str("launch_stage"),
-        Objectives = r.Str("objectives"), TutorialEvent = r.Str("tutorial_event"), TutorialStartEvent = r.Str("tutorial_start_event"), PurchaseEvent = r.Str("purchase_event"),
+        Objectives = r.Str("objectives"), TutorialEvent = r.Str("tutorial_event"), TutorialStartEvent = r.Str("tutorial_start_event"),
+        FirstOpenEvent = r.Str("first_open_event"), AppRemoveEvent = r.Str("app_remove_event"), PurchaseEvent = r.Str("purchase_event"),
         NuxEvents = ParseNux(r.Str("nux_events")),
         BackfillDays = (int)(r.Long("backfill_days") ?? 90), SyncIntervalMinutes = (int)(r.Long("sync_interval_minutes") ?? 60),
         CreatedAt = r.Str("created_at"), UpdatedAt = r.Str("updated_at"), Archived = r.Long("archived") == 1,

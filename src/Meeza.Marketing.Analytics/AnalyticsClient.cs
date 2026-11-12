@@ -69,9 +69,13 @@ public sealed class AnalyticsClient
 
     public string ServiceAccountEmail => _tokens.Value.ClientEmail;
 
-    /// <summary>Every GA4 property the service account can read.</summary>
+    /// <summary>
+    /// The GA4 properties the service account can read. When GA4_PROPERTY_IDS is set, properties outside it are dropped
+    /// before anything else is asked about them, so the allow-list limits what is read, not only what is returned.
+    /// </summary>
     public async Task<IReadOnlyList<Ga4Property>> ListPropertiesAsync(CancellationToken ct)
     {
+        var allow = _options.PropertyIds;
         var list = new List<Ga4Property>();
         string? page = null;
         do
@@ -86,6 +90,7 @@ public sealed class AnalyticsClient
                 }
             page = doc.RootElement.Str("nextPageToken");
         } while (!string.IsNullOrEmpty(page));
+        if (allow.Count > 0) list.RemoveAll(p => !allow.Contains(p.PropertyId));
 
         // Resolve the app names under each property so the UI can show "Gapsy (com.meeza.colorslide)" instead of a Firebase project id.
         // Best effort: a property the key cannot read streams for keeps Apps = null.

@@ -16,7 +16,7 @@ namespace Meeza.MarketingMcp.Configuration;
 
 public static class ServiceRegistration
 {
-    public const string UserAgent = "meeza-marketing-mcp/1.0";
+    public static string UserAgent => $"meeza-marketing-mcp/{AppVersion.Current}";
 
     /// <summary>Loads appsettings.json (non-secret settings only) from the app folder and the working directory.</summary>
     public static IConfigurationBuilder AddMeezaConfiguration(this IConfigurationBuilder builder)
@@ -76,13 +76,33 @@ public static class ServiceRegistration
         services.AddSingleton<Intelligence.ProjectData>();
         services.AddSingleton<Intelligence.AnalyticsEngine>();
         services.AddSingleton<Intelligence.ProblemCheck>();
+        services.AddSingleton(Ai.LocalClaudeLocator.Default);
         services.AddSingleton<Ai.ClaudeGateway>();
         services.AddSingleton<Ai.AnalystService>();
         services.AddSingleton<Ai.ResearchService>();
+        services.AddSingleton(new Dashboard.DemoMode(false));
         return services;
     }
 
-    private static HttpClient CreateHttpClient(IServiceProvider sp)
+    /// <summary>
+    /// Turns the registrations above into demo mode (<c>dashboard --demo</c>): a throwaway database for the invented
+    /// project, an empty throwaway secret store, a settings resolver that returns nothing, and no local Claude app. With no setting resolved,
+    /// no platform is configured, so a demo can neither show the user's real data nor send a request to a provider.
+    /// </summary>
+    public static IServiceCollection AddMeezaDemo(this IServiceCollection services)
+    {
+        var id = Guid.NewGuid().ToString("N");
+        var db = Path.Combine(Path.GetTempPath(), $"meeza-demo-{id}.db");
+        services.AddSingleton(new Dashboard.DemoMode(true));
+        services.AddSingleton<ISettingsResolver>(new Dashboard.NoSettings());
+        services.AddSingleton(Ai.LocalClaudeLocator.None); // nor the Claude app signed in on this computer
+        services.AddSingleton(new LocalSecretStore(Path.Combine(Path.GetTempPath(), $"meeza-demo-{id}.secrets.json")));
+        services.AddSingleton(_ => new Storage.MarketingDb(db));
+        return services;
+    }
+
+    /// <summary>The HTTP client every provider uses: retries, no automatic redirects. Internal so tests can check that policy.</summary>
+    internal static HttpClient CreateHttpClient(IServiceProvider sp)
     {
         var retry = new RetryHandler(sp.GetRequiredService<ILogger<RetryHandler>>())
         {
@@ -96,7 +116,7 @@ public static class ServiceRegistration
             },
         };
         var client = new HttpClient(retry) { Timeout = TimeSpan.FromSeconds(120) };
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("meeza-marketing-mcp", "1.0"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("meeza-marketing-mcp", AppVersion.Current));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         return client;
     }

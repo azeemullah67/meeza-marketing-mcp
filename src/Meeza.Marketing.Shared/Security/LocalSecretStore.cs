@@ -22,8 +22,7 @@ public sealed class LocalSecretStore
         _path = path ?? DefaultPath;
     }
 
-    public static string DefaultPath =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MeezaMarketingMcp", "secrets.json");
+    public static string DefaultPath => Path.Combine(PrivateStorage.DefaultDirectory, "secrets.json");
 
     public string FilePath => _path;
 

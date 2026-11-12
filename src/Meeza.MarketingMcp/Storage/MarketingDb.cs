@@ -44,7 +44,7 @@ public sealed class MarketingDb
     public static string DefaultPath =>
         Environment.GetEnvironmentVariable("MEEZA_DB_PATH") is { Length: > 0 } custom
             ? custom
-            : System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MeezaMarketingMcp", "marketing.db");
+            : System.IO.Path.Combine(PrivateStorage.DefaultDirectory, "marketing.db");
 
     public SqliteConnection Open()
     {

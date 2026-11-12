@@ -23,7 +23,7 @@ public sealed class ConnectionSettings(
     PlayConsoleClient playClient, PlayConsoleService play,
     AnalyticsClient analyticsClient, AnalyticsService analytics,
     AdjustClient adjustClient, AdjustService adjust,
-    DashboardData dashboard, Ai.ClaudeGateway claude)
+    DashboardData dashboard, Ai.ClaudeGateway claude, DemoMode demo)
 {
     public const int MaxValueLength = 20_000;
 
@@ -40,9 +40,9 @@ public sealed class ConnectionSettings(
         [GoogleAdsOptions.Platform] =
         [
             new(SettingKeys.GoogleAdsServiceAccountJson, "Service account key (JSON)", true, true, "Recommended. Choose the downloaded .json key of a service account you added as a Read only user in Google Ads.", Multiline: true),
-            new(SettingKeys.GoogleAdsClientId, "OAuth client ID", false, false, "Alternative to the service account: Desktop app OAuth client, then Sign in with Google."),
+            new(SettingKeys.GoogleAdsClientId, "OAuth client ID", false, false, "Alternative to the service account: Desktop app OAuth client. Save it, then run `meeza-marketing-mcp auth google-ads` in a terminal to sign in."),
             new(SettingKeys.GoogleAdsClientSecret, "OAuth client secret", true, false, "From the same Desktop OAuth client."),
-            new(SettingKeys.GoogleAdsRefreshToken, "Refresh token", true, false, "Filled in automatically by \"Sign in with Google\"."),
+            new(SettingKeys.GoogleAdsRefreshToken, "Refresh token", true, false, "Filled in by `meeza-marketing-mcp auth google-ads`."),
             new(SettingKeys.GoogleAdsDeveloperToken, "Developer token", true, false, "Only for older setups. Google no longer requires one for new Cloud projects."),
             new(SettingKeys.GoogleAdsLoginCustomerId, "Manager (MCC) ID", false, false, "Optional. Only if you reach the ad account through a manager account, e.g. 123-456-7890."),
             new(SettingKeys.GoogleAdsCustomerIds, "Customer IDs", false, false, "Optional allow-list, comma-separated."),
@@ -66,8 +66,9 @@ public sealed class ConnectionSettings(
         ],
         [ClaudePlatform] =
         [
-            new(SettingKeys.AnthropicApiKey, "Anthropic API key", true, true, "From platform.claude.com → API keys. Used only for the AI analyst chat and market research; your data is sent to the Claude API when you ask a question."),
-            new(SettingKeys.AiModel, "Model", false, false, $"Optional. Default {Ai.ClaudeGateway.DefaultModel}."),
+            new(SettingKeys.AiEngine, "Engine", false, false, "Optional. claude_code = the Claude Code app on this computer, signed in with your Claude account (no API key needed). api = the Anthropic API key below. Leave empty to use the API key when one is saved, otherwise the Claude app."),
+            new(SettingKeys.AnthropicApiKey, "Anthropic API key", true, false, "From platform.claude.com → API keys. Optional when the Claude app is installed; market research always needs it. Your data is sent to Claude only when you ask a question."),
+            new(SettingKeys.AiModel, "Model", false, false, $"Optional. Default {Ai.ClaudeGateway.DefaultModel} on the API; the Claude app uses its own default unless you set one."),
         ],
     };
 
@@ -116,6 +117,7 @@ public sealed class ConnectionSettings(
     /// <summary>Validates and stores the given values. Empty values are ignored (keep current); keys in <paramref name="remove"/> are deleted.</summary>
     public void Save(string platform, IReadOnlyDictionary<string, string?> values, IReadOnlyCollection<string> remove)
     {
+        demo.RequireLive();
         if (!CanSave) throw new InvalidOperationException("Saving settings needs the encrypted store, which is only available on Windows. Use environment variables on this OS.");
         if (!Fields.TryGetValue(platform, out var fields)) throw new ArgumentException($"Unknown connection '{platform}'.");
         var allowed = fields.ToDictionary(f => f.Key, StringComparer.OrdinalIgnoreCase);
@@ -182,7 +184,12 @@ public sealed class ConnectionSettings(
                     if (adjustApps.Count == 0)
                         return new { ok = false, message = "The token works, but no Adjust app is visible to it. Check this Adjust user's app permissions.", items = Array.Empty<string>() };
                     return new { ok = true, message = $"Connected. {adjustApps.Count} app{(adjustApps.Count == 1 ? "" : "s")} found. Amounts are reported in {adjust.Currency}.", items = adjustApps.Select(a => $"{a.Name ?? "(unnamed)"} ({a.AppToken})").Take(10) };
+                case ClaudePlatform when claude.UsesLocalApp:
+                    var reply = await claude.RunLocalAsync("Reply with the single word: ready", "Are you ready?", ct).ConfigureAwait(false);
+                    return new { ok = true, message = $"Connected through the Claude app on this computer ({claude.LocalAppPath}){(reply.Model is null ? "" : $", model {reply.Model}")}. No API key is used; market research still needs one.", items = Array.Empty<string>() };
                 case ClaudePlatform:
+                    if (!claude.HasApiKey)
+                        return new { ok = false, message = claude.EngineSetting == Ai.ClaudeGateway.EngineLocal ? "The Claude Code app was not found on this computer. Install it from claude.com/code and sign in, then test again." : Ai.ClaudeGateway.Hint, items = Array.Empty<string>() };
                     using (var client = claude.Client())
                     {
                         var model = await client.Models.Retrieve(claude.Model, cancellationToken: ct).ConfigureAwait(false);
@@ -201,6 +208,7 @@ public sealed class ConnectionSettings(
     /// <summary>Runs the Google OAuth loopback sign-in and stores the refresh token.</summary>
     public async Task<object> SignInGoogleAdsAsync(CancellationToken ct)
     {
+        demo.RequireLive();
         var clientId = settings.Get(SettingKeys.GoogleAdsClientId);
         var clientSecret = settings.Get(SettingKeys.GoogleAdsClientSecret);
         if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
@@ -272,6 +280,12 @@ public sealed class ConnectionSettings(
                 return string.Join(",", SettingsResolver.SplitList(value).Select(AdjustOptions.NormalizeAppToken));
             case SettingKeys.AdjustCurrency:
                 return AdjustOptions.NormalizeCurrency(value);
+            case SettingKeys.AiEngine:
+                var engine = value.Trim().ToLowerInvariant().Replace('-', '_').Replace(' ', '_');
+                if (engine is "local" or "claude" or "claude_app") engine = Ai.ClaudeGateway.EngineLocal;
+                if (engine is not (Ai.ClaudeGateway.EngineApi or Ai.ClaudeGateway.EngineLocal))
+                    throw new ArgumentException("Engine must be claude_code (the Claude app on this computer) or api (Anthropic API key). Leave it empty for automatic.");
+                return engine;
             case SettingKeys.AnthropicApiKey:
                 if (!value.StartsWith("sk-ant-", StringComparison.Ordinal)) throw new ArgumentException("Anthropic API keys start with sk-ant-.");
                 if (value.Any(char.IsWhiteSpace)) throw new ArgumentException("Keys can't contain spaces.");

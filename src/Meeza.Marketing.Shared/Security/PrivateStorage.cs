@@ -14,7 +14,13 @@ public static class PrivateStorage
 {
     /// <summary>The default per-user data directory (%APPDATA%\MeezaMarketingMcp or ~/.config/MeezaMarketingMcp).</summary>
     public static string DefaultDirectory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MeezaMarketingMcp");
+        DirectoryOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MeezaMarketingMcp");
+
+    /// <summary>
+    /// Test seam: lets the test suite keep the dashboard key, instance records and default store paths in a throwaway
+    /// folder, so tests can rotate and delete them without touching the user's real profile. Never set in production.
+    /// </summary>
+    internal static string? DirectoryOverride { get; set; }
 
     /// <summary>Creates <paramref name="directory"/> if needed and restricts it to the current user.</summary>
     public static void EnsurePrivateDirectory(string directory)

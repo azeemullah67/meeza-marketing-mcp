@@ -132,6 +132,35 @@ public class NuxJourneyTests
     }
 
     [Fact]
+    public void Custom_first_open_and_app_remove_events_are_saved_and_used_by_the_funnel()
+    {
+        using var t = new TestDb();
+        Assert.Throws<ArgumentException>(() => t.Projects.Create(new Project { Name = "X", AppRemoveEvent = "app remove" }));
+        var p = t.Projects.Create(new Project { Name = "Gapsy", TimeZone = "UTC", FirstOpenEvent = " game_first_open ", AppRemoveEvent = "uninstall", Connections = [TestDb.Ga4Conn] });
+        Assert.Equal(("game_first_open", "uninstall"), (t.Projects.Require(p.Id).FirstOpenEvent, t.Projects.Require(p.Id).AppRemoveEvent));
+        var cleared = t.Projects.Update(p.Id, t.Projects.Require(p.Id) with { FirstOpenEvent = null, AppRemoveEvent = null });
+        Assert.Equal(("first_open", "app_remove"), (cleared.FirstOpen, cleared.AppRemove));
+        t.Projects.Update(p.Id, t.Projects.Require(p.Id) with { FirstOpenEvent = "game_first_open", AppRemoveEvent = "uninstall" });
+
+        var today = TimeZones.Today("UTC");
+        var f = new Filters(today.AddDays(-7), today.AddDays(-1));
+        var d = today.AddDays(-2);
+        var scope = new Dictionary<string, object?> { ["project_id"] = p.Id, ["property_id"] = "123456789" };
+        t.Facts.ReplaceWindow("ga4_events_daily", scope, "date", f.Start, f.End, new[]
+        {
+            new Ga4EventRow(d, "game_first_open", 200, 200), new Ga4EventRow(d, "uninstall", 30, 30),
+            new Ga4EventRow(d, "first_open", 5, 5), new Ga4EventRow(d, "app_remove", 1, 1), // stray standard events must not be used
+        });
+        t.Facts.ReplaceWindow("ga4_daily", scope, "date", f.Start, f.End, [new Ga4DailyRow(d, 200, 200, null, null, null, null, null, null, null, null, "USD")]);
+        var e = new AnalyticsEngine(t.Projects, t.Syncs, t.Data, new SyncEngine(t.Projects, t.Syncs, [], NullLogger<SyncEngine>.Instance));
+        var funnel = JsonSerializer.SerializeToElement(e.Funnel(p.Id, f), Meeza.Marketing.Shared.Utilities.Json.Output);
+        var first = funnel.GetProperty("steps").EnumerateArray().Single(s => s.GetProperty("key").GetString() == "first_open");
+        Assert.Equal((200, "GA4 game_first_open"), (first.GetProperty("value").GetInt64(), first.GetProperty("source").GetString()));
+        var u = funnel.GetProperty("uninstalls");
+        Assert.Equal(("uninstall", 30L, 15.0m), (u.GetProperty("event").GetString(), u.GetProperty("users").GetInt64(), u.GetProperty("perHundredFirstOpens").GetDecimal()));
+    }
+
+    [Fact]
     public void Missing_journey_event_is_unavailable_with_a_fix()
     {
         using var t = new TestDb();

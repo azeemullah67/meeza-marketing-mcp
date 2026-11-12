@@ -315,7 +315,7 @@ public sealed partial class AnalyticsEngine
             new("store_visits", "Store visits", null, "Google Play Console", "store", "Store listing visitors come from Play Console statistics (reports bucket). Not connected, so click → store visit → install cannot be separated."),
             new("installs", "Installs (ad-attributed)", ads.Installs is null ? null : (long)ads.Installs.Value, "Ad platforms", "store",
                 ads.Installs is null ? "No install conversion tracking on the ad accounts." : "Platform-attributed installs (paid only)."),
-            new("first_open", "First open", hasGa ? Ev("first_open") : null, "GA4 first_open", "onboarding",
+            new("first_open", "First open", hasGa ? Ev(p.FirstOpen) : null, "GA4 " + p.FirstOpen, "onboarding",
                 "Counted by GA4 inside the game, for paid and organic players together. Ad platforms count installs their own way (store conversions, modelled, up to 30 days after a click), so the two numbers never match exactly: fewer first opens means some installs never opened the game or GA4 has not received them yet."),
         };
         // The project's first-time player journey replaces the two standard tutorial steps when it is configured.
@@ -341,10 +341,21 @@ public sealed partial class AnalyticsEngine
                 events.ContainsKey("ad_impression") ? null : "No ad_impression events: ad revenue is not tracked in GA4 (link AdMob or log ad_impression)."),
         ]);
         var firstOpens = steps.First(s => s.Key == "first_open").Value;
+        // Uninstalls sit beside the funnel, not in it: GA4 sends app_remove on Android only, and a removal can come from any earlier cohort.
+        var removed = hasGa ? Ev(p.AppRemove) : null;
+        var prevRemoved = FunnelEvents(projectId, f.Previous()).TryGetValue(p.AppRemove, out var pr) ? pr : (long?)null;
+        var uninstalls = !hasGa ? null : new
+        {
+            @event = p.AppRemove, users = removed, previous = prevRemoved,
+            perHundredFirstOpens = removed is not null && firstOpens is > 0 ? Math.Round(removed.Value * 100m / firstOpens.Value, 1) : (decimal?)null,
+            note = removed is null
+                ? $"No {p.AppRemove} events in this period. GA4 collects app_remove on Android only; set the uninstall event in Project settings if your game uses another name."
+                : "GA4 collects app_remove on Android only, so iOS uninstalls are not counted. Removals in the period can come from players who installed earlier.",
+        };
 
         // Conversion between consecutive available steps; the weakest relative to its target (or previous period) is the bottleneck.
         var prevF = f.Previous();
-        var prevSteps = FunnelValues(projectId, prevF, today, tutorialEvent, tutorialBegin, purchaseEvent, nux);
+        var prevSteps = FunnelValues(projectId, prevF, today, p.FirstOpen, tutorialEvent, tutorialBegin, purchaseEvent, nux);
         var output = new List<object>();
         FunnelStep? last = null;
         var drops = new List<(FunnelStep From, FunnelStep To, decimal Rate, decimal? PrevRate)>();
@@ -383,7 +394,7 @@ public sealed partial class AnalyticsEngine
         var worst = drops.Where(d => d.From.Stage != "ad" && d.To.Key is not "first_open" && d.To.Stage != "monetization").OrderBy(d => d.Rate).FirstOrDefault();
         return new
         {
-            range = f.Range, steps = output, diagnosis, nuxConfigured = nux.Count > 0,
+            range = f.Range, steps = output, diagnosis, nuxConfigured = nux.Count > 0, uninstalls,
             biggestDrop = worst.To is null ? null : new { from = worst.From.Label, to = worst.To.Label, rate = worst.Rate, stage = worst.To.Stage, meaning = StageMeaning(worst.To.Stage) },
             revenue = hasGa ? new { total = revenue, ad = adRevenue, purchase = ga.Sum(x => x.PurchaseRevenue ?? 0), currency = ga.Select(x => x.Currency).FirstOrDefault(c => c is not null) } : null,
             notes = new[]
@@ -398,16 +409,19 @@ public sealed partial class AnalyticsEngine
 
     private static string NuxKey(string eventName) => "nux:" + eventName;
 
-    private Dictionary<string, long?> FunnelValues(string projectId, Filters f, DateOnly today, string? tutorialEvent, string? tutorialBegin, string purchaseEvent, IReadOnlyList<NuxStep> nux)
+    private Dictionary<string, long> FunnelEvents(string projectId, Filters f) =>
+        data.Ga4Events(projectId, f.Start, f.End).GroupBy(e => e.EventName).ToDictionary(g => g.Key, g => g.Sum(x => x.Users ?? 0));
+
+    private Dictionary<string, long?> FunnelValues(string projectId, Filters f, DateOnly today, string firstOpen, string? tutorialEvent, string? tutorialBegin, string purchaseEvent, IReadOnlyList<NuxStep> nux)
     {
         var ads = Perf.Of(data.Ads(projectId, f));
-        var events = data.Ga4Events(projectId, f.Start, f.End).GroupBy(e => e.EventName).ToDictionary(g => g.Key, g => g.Sum(x => x.Users ?? 0));
+        var events = FunnelEvents(projectId, f);
         var heat = RetentionAnalytics.Heatmap(data.Cohorts(projectId, "all", f.Start, f.End), today);
         long? E(string? n) => n is not null && events.TryGetValue(n, out var v) ? v : null;
         var values = new Dictionary<string, long?>
         {
             ["impressions"] = ads.Impressions, ["clicks"] = ads.Clicks, ["installs"] = ads.Installs is null ? null : (long)ads.Installs,
-            ["first_open"] = E("first_open"), ["tutorial_begin"] = E(tutorialBegin), ["tutorial_complete"] = E(tutorialEvent),
+            ["first_open"] = E(firstOpen), ["tutorial_begin"] = E(tutorialBegin), ["tutorial_complete"] = E(tutorialEvent),
             ["returning_d1"] = heat.Where(h => h.Cells[1].Status != CellStatus.Immature).Sum(h => h.Cells[1].ActiveUsers ?? 0),
             ["purchasers"] = E(purchaseEvent), ["ad_viewers"] = E("ad_impression"),
         };
@@ -434,7 +448,7 @@ public sealed partial class AnalyticsEngine
         var p = projects.Require(projectId);
         var today = Today(p);
         var ads = data.Ads(projectId, f with { Platform = null, Campaign = null });
-        var events = data.Ga4Events(projectId, f.Start, f.End).Where(e => e.EventName == "first_open").ToDictionary(e => e.Date, e => e.Users);
+        var events = data.Ga4Events(projectId, f.Start, f.End).Where(e => e.EventName == p.FirstOpen).ToDictionary(e => e.Date, e => e.Users);
         var sm = data.Ga4Dims(projectId, f.Start, f.End, "source_medium");
         var adj = data.AdjustInstalls(projectId, f.Start, f.End).ToDictionary(x => x.Date);
         var hasAdjust = adj.Count > 0;
