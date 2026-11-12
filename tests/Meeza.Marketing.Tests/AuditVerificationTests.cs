@@ -233,7 +233,7 @@ public class Ga4PropertyListingTests
         var http = new FakeHttp(r =>
         {
             var url = r.RequestUri!.AbsoluteUri;
-            if (url.StartsWith("https://oauth2.googleapis.com/token", StringComparison.Ordinal)) return FakeHttp.Json("""{"access_token":"ya29.synthetic","expires_in":3600}""");
+            if (url.StartsWith("https://oauth2.googleapis.com/token", StringComparison.Ordinal)) return FakeHttp.Json("""{"access_token":"fake","expires_in":3600}""");
             if (url.Contains("/accountSummaries", StringComparison.Ordinal))
                 return FakeHttp.Json("""
                     {"accountSummaries":[{"displayName":"Studio","propertySummaries":[
