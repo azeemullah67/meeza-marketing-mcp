@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Meeza.Marketing.Analytics",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Meeza.Marketing.Adjust", "src\Meeza.Marketing.Adjust\Meeza.Marketing.Adjust.csproj", "{E9A2BA1C-626E-4304-AD7D-C193FA4A4F0A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Meeza.Marketing.FakeClaude", "tests\Meeza.Marketing.FakeClaude\Meeza.Marketing.FakeClaude.csproj", "{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -129,6 +131,18 @@ Global
 		{E9A2BA1C-626E-4304-AD7D-C193FA4A4F0A}.Release|x64.Build.0 = Release|Any CPU
 		{E9A2BA1C-626E-4304-AD7D-C193FA4A4F0A}.Release|x86.ActiveCfg = Release|Any CPU
 		{E9A2BA1C-626E-4304-AD7D-C193FA4A4F0A}.Release|x86.Build.0 = Release|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Debug|x64.Build.0 = Debug|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Debug|x86.Build.0 = Debug|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Release|x64.ActiveCfg = Release|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Release|x64.Build.0 = Release|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Release|x86.ActiveCfg = Release|Any CPU
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -142,5 +156,6 @@ Global
 		{15C556CF-167B-4E3B-9284-00ECD5EBDDA7} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{A86620E4-538E-437C-B343-CE168B480190} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{E9A2BA1C-626E-4304-AD7D-C193FA4A4F0A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{79BA7BE2-1E96-4DB8-9D82-BAE35CDF536E} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

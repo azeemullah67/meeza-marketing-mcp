@@ -25,20 +25,31 @@ public static class LocalClaudeCli
     /// <summary>Full path of the claude executable, or null when Claude Code is not installed.</summary>
     public static string? Find()
     {
-        var names = OperatingSystem.IsWindows() ? new[] { "claude.exe", "claude.cmd" } : ["claude"];
         var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         if (home.Length > 0) dirs.Add(Path.Combine(home, ".local", "bin")); // default location of the native installer
+        return FindIn(dirs);
+    }
+
+    /// <summary>
+    /// The executable name looked for: on Windows only the native <c>claude.exe</c>. A <c>claude.cmd</c> (npm shim) is
+    /// never used, because Windows runs it through cmd.exe, which re-parses the arguments: it expands <c>%VAR%</c> and
+    /// cuts a multi-line system prompt at its first line break (verified on .NET 9 / Windows 11).
+    /// </summary>
+    public static string ExecutableName => OperatingSystem.IsWindows() ? "claude.exe" : "claude";
+
+    /// <summary>The first <see cref="ExecutableName"/> in <paramref name="dirs"/>. Public for tests.</summary>
+    public static string? FindIn(IEnumerable<string> dirs)
+    {
         foreach (var dir in dirs)
-            foreach (var n in names)
+        {
+            try
             {
-                try
-                {
-                    var path = Path.Combine(dir, n);
-                    if (File.Exists(path)) return path;
-                }
-                catch (ArgumentException) { } // malformed PATH entry
+                var path = Path.Combine(dir, ExecutableName);
+                if (File.Exists(path)) return path;
             }
+            catch (ArgumentException) { } // malformed PATH entry
+        }
         return null;
     }
 

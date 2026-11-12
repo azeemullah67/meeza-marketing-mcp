@@ -13,8 +13,13 @@ permissions:
 
 jobs:
   build-test:
-    name: Build, test, audit dependencies
-    runs-on: ubuntu-latest
+    name: Build, test, audit dependencies (${{ matrix.os }})
+    # The secret store (DPAPI), file ACLs and the Claude app lookup are Windows-specific; run both.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +38,7 @@ jobs:
         run: dotnet test --no-build -c Release --logger "trx;LogFileName=results.trx"
 
       - name: Dependency vulnerability audit
+        shell: bash
         run: |
           dotnet list package --vulnerable --include-transitive > vulns.txt
           cat vulns.txt
@@ -43,7 +49,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results
+          name: test-results-${{ matrix.os }}
           path: "**/results.trx"
 
   secret-scan:

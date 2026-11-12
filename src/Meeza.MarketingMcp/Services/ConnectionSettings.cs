@@ -189,7 +189,7 @@ public sealed class ConnectionSettings(
                     return new { ok = true, message = $"Connected through the Claude app on this computer ({claude.LocalAppPath}){(reply.Model is null ? "" : $", model {reply.Model}")}. No API key is used; market research still needs one.", items = Array.Empty<string>() };
                 case ClaudePlatform:
                     if (!claude.HasApiKey)
-                        return new { ok = false, message = claude.EngineSetting == Ai.ClaudeGateway.EngineLocal ? "The Claude Code app was not found on this computer. Install it from claude.com/code and sign in, then test again." : Ai.ClaudeGateway.Hint, items = Array.Empty<string>() };
+                        return new { ok = false, message = claude.EngineSetting == Ai.ClaudeGateway.EngineLocal ? "The Claude Code app (claude.exe) was not found on PATH or in ~/.local/bin. Install it with the native installer from claude.com/code and sign in, then test again. An npm install (claude.cmd) is not used on Windows." : Ai.ClaudeGateway.Hint, items = Array.Empty<string>() };
                     using (var client = claude.Client())
                     {
                         var model = await client.Models.Retrieve(claude.Model, cancellationToken: ct).ConfigureAwait(false);

@@ -18,7 +18,7 @@ A read-only [Model Context Protocol](https://modelcontextprotocol.io) server wit
 
 - **54 MCP tools**, including cross-platform reports (spend, installs, CPI, country comparison, period comparison, alerts, creative test board, industry benchmarks, game scorecard) and project tools that read the synchronized local store.
 - **Local dashboard** at `http://127.0.0.1:5057`: one project per game, synchronized local history, executive KPIs with targets, campaigns, creatives, countries and attribution, funnel, cohort retention, budget forecast, KPI targets and a task list from an automatic 30-day check.
-- **Optional AI analyst and market research** in the dashboard. Off by default; they run only with your own Anthropic API key and then send the project's synced advertising and analytics data, the project profile and your question to the Anthropic API.
+- **Optional AI analyst and market research** in the dashboard. The analyst is available when the Claude Code app is installed on the computer (it then uses your own Claude sign-in, no API key) or when you add your own Anthropic API key; market research needs the API key. Both run only when you ask, and then send your question, the project profile and that project's synced advertising and analytics figures to Claude.
 
 ## Read-only posture
 

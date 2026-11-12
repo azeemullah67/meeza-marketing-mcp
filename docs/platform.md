@@ -85,6 +85,8 @@ the newest day with activity is older than expected), `error` (last attempt fail
 The AI analyst chat has two engines, chosen in **Data sources → Claude → Engine** (`MEEZA_AI_ENGINE`):
 
 - `claude_code`: the Claude Code app installed on this computer, signed in with your Claude account. No API key.
+  The app is looked up on `PATH` and in `~/.local/bin`. On Windows only the native `claude.exe` is used, not an npm
+  `claude.cmd`: Windows runs `.cmd` files through cmd.exe, which expands `%VAR%` and cuts multi-line arguments.
   Each question runs `claude -p` headless with no tools, no MCP servers, no user or project settings and no saved
   session; the dashboard passes the project's views for the last 14 complete days (overview, findings, funnel,
   campaigns, retention, creatives, attribution, forecast, sync status) in the prompt. The app uses its own default

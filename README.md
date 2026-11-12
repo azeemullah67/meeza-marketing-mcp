@@ -187,7 +187,13 @@ On macOS and Linux the encrypted store isn't available yet. Supply secrets as en
 
 ### AI features
 
-- The AI analyst and market research are optional and off by default. The analyst runs either through the Claude Code app installed on this computer, signed in with your own Claude account (no API key), or with your own Anthropic API key, set in the dashboard or as `ANTHROPIC_API_KEY`. Market research always needs the API key. When you use them, they send that project's synced advertising and analytics data, the project profile and your question to Claude, and market research uses the API's web search. See [docs/security.md](docs/security.md#ai-features).
+- The AI analyst is available as soon as the Claude Code app is installed on this computer (found on `PATH` or in `~/.local/bin`; on Windows only the native `claude.exe`), or when you save your own Anthropic API key in the dashboard or set `ANTHROPIC_API_KEY`. With the app it uses your own Claude sign-in and needs no API key. Choose the engine, or turn the app off by choosing `api`, in **Data sources → Claude → Engine**.
+- It runs only when you ask a question in the dashboard. Each question sends your question, the project profile and that project's synced advertising and analytics figures (through the app: the last 14 days plus a forecast from the last 28; on the API: whatever the analyst reads through its tools) to Claude. Nothing is sent in the background.
+- Market research needs the API key and runs only when you start a report; it also uses the API's web search. See [docs/security.md](docs/security.md#ai-features).
+
+### Known limitations
+
+The dashboard's Content-Security-Policy still allows inline scripts, and the encrypted secret store works on Windows only (use environment variables elsewhere). See [docs/security.md](docs/security.md#known-limitations) for these and the other known limitations.
 
 ## Agent skill (optional)
 
@@ -197,12 +203,18 @@ On macOS and Linux the encrypted store isn't available yet. Supply secrets as en
 
 ```text
 src/
-  Meeza.MarketingMcp/          MCP host, CLI commands, unified tools
+  Meeza.MarketingMcp/          MCP host, CLI commands, unified and project tools
+    Dashboard/                 Local dashboard: web server, /api/v2, single-page app (app.html), demo mode
+    Storage/ Sync/ Intelligence/  Local project store, background sync, analysis and checks
+    Ai/                        AI analyst (Claude app or API) and market research
   Meeza.Marketing.Shared/      Normalized models, metrics, secrets, HTTP retry, redaction
   Meeza.Marketing.Meta/        Meta Marketing API client and tools
   Meeza.Marketing.GoogleAds/   Google Ads API (REST + GAQL) client and tools
   Meeza.Marketing.PlayConsole/ Play Developer Reporting API, reviews, bulk-report exports
+  Meeza.Marketing.Analytics/   Google Analytics 4 / Firebase Data API client and tools
+  Meeza.Marketing.Adjust/      Adjust reporting API client and tools
 tests/Meeza.Marketing.Tests/   Unit tests (no network)
+tests/Meeza.Marketing.FakeClaude/  Stand-in for the Claude Code executable, used by the tests
 skills/meeza-marketing/        SKILL.md: when and how an agent should use these tools
 docs/                          Setup guides, architecture, security, troubleshooting
 examples/                      Claude config and example prompts

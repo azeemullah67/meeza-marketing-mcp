@@ -23,6 +23,8 @@
     <ProjectReference Include="..\..\src\Meeza.MarketingMcp\Meeza.MarketingMcp.csproj" />
     <ProjectReference Include="..\..\src\Meeza.Marketing.Analytics\Meeza.Marketing.Analytics.csproj" />
     <ProjectReference Include="..\..\src\Meeza.Marketing.Adjust\Meeza.Marketing.Adjust.csproj" />
+    <!-- Built first, not referenced: LocalClaudeTests starts it as a stand-in for the Claude Code executable. -->
+    <ProjectReference Include="..\Meeza.Marketing.FakeClaude\Meeza.Marketing.FakeClaude.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

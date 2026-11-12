@@ -55,7 +55,8 @@ The ownership check itself reads the `id` and `account_id` of the campaign or ad
 - The dashboard page is a single HTML file with inline script, so its Content-Security-Policy allows `'unsafe-inline'` for scripts and styles. All provider and AI text is HTML-escaped before insertion and external links/images are limited to `http(s)` URLs; moving to nonce-based CSP is planned.
 - OAuth scopes for Google Ads and Play are the platforms' read scopes but still broad; keep the service account / user at a read-only role on the provider side.
 - Windows ACL handling and Unix modes are applied best-effort: a file system without permission support does not stop the application.
+- The encrypted secret store uses Windows DPAPI and is available on Windows only. On Linux and macOS, credentials come from environment variables or configuration, and the dashboard cannot save them.
 
 ## CI
 
-Every push runs a locked NuGet restore (`packages.lock.json` must match), build with warnings as errors, the test suite, `dotnet list package --vulnerable --include-transitive`, and a gitleaks secret scan; the audit also runs weekly.
+Every push runs, on both Ubuntu and Windows, a locked NuGet restore (`packages.lock.json` must match), build with warnings as errors, the test suite and `dotnet list package --vulnerable --include-transitive`, plus a gitleaks secret scan (Ubuntu only) of the pushed commits; the audit also runs weekly.
