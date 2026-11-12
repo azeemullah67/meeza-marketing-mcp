@@ -50,7 +50,7 @@ public sealed class ClaudeGateway(ISettingsResolver settings, LocalClaudeLocator
     public string? ModelSetting => settings.Get(SettingKeys.AiModel) is { Length: > 0 } m ? m : null;
 
     public const string Hint =
-        "Set up Claude in Data sources → Claude: install the Claude Code app on this computer and sign in (no API key needed), " +
+        "Set up Claude in Data sources → Claude: install the Claude Code app on this computer with its native installer and sign in (no API key needed), " +
         "or add an Anthropic API key (or set ANTHROPIC_API_KEY). The key is stored encrypted on this computer.";
 
     public const string ApiKeyHint =

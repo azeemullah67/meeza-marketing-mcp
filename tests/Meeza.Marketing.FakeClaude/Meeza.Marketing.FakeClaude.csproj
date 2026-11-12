@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Test helper: stands in for the Claude Code executable so LocalClaudeCli can be tested without the real app. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>fake-claude</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>
